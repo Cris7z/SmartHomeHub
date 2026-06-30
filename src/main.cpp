@@ -143,7 +143,7 @@ bool setupI2sMic() {
   i2sConfig.sample_rate = MIC_SAMPLE_RATE;
   i2sConfig.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT;
   i2sConfig.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
-  i2sConfig.communication_format = I2S_COMM_FORMAT_I2S;
+  i2sConfig.communication_format = I2S_COMM_FORMAT_STAND_I2S;
   i2sConfig.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;
   i2sConfig.dma_buf_count = 4;
   i2sConfig.dma_buf_len = 128;

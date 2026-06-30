@@ -1,8 +1,102 @@
 # 乐鑫·智居 SmartHomeHub
 
-ESP32-S3 智能家居演示项目，当前主线已经迁移到 PlatformIO，核心源码在 `src/main.cpp`。旧的 `SmartHomeHub.ino` 保留为 Arduino IDE 兼容副本，日常修改以 `src/main.cpp` 为准。
+ESP32-S3 智能家居中控演示项目。当前仓库以 PlatformIO 为主线，主程序入口是 `src/main.cpp`。
 
-当前闭环：
+## 项目结构
+
+```text
+SmartHomeHub/
+├─ src/
+│  └─ main.cpp              # 主程序
+├─ docs/
+│  └─ competition.md        # 比赛展示、接线和验收说明
+├─ platformio.ini           # PlatformIO 构建配置
+├─ README.md                # 环境配置和快速上手
+└─ .gitignore               # 忽略本地构建产物和 IDE 缓存
+```
+
+仓库里不再保留 `SmartHomeHub.ino` 副本，避免 Arduino IDE 版本和 PlatformIO 版本不同步。后续改代码只改 `src/main.cpp`。
+
+## 环境配置
+
+### 1. 必需软件
+
+推荐环境：
+
+- Windows 10/11
+- VS Code
+- PlatformIO IDE 扩展
+- ESP32-S3 数据线和串口驱动
+
+也可以直接使用 PlatformIO CLI：
+
+```powershell
+pio --version
+```
+
+如果命令不存在，先安装 VS Code 的 PlatformIO IDE 扩展，或按你的机器习惯把 PlatformIO 安装到 D 盘工具链目录，例如：
+
+```text
+D:\A-Soft\DevTools\PlatformIO
+```
+
+### 2. 打开项目
+
+用 VS Code 打开这个文件夹：
+
+```text
+D:\X\26嵌赛\SmartHomeHub
+```
+
+PlatformIO 会根据 `platformio.ini` 自动拉取 ESP32 平台和依赖库。生成目录 `.pio/`、`.cache/`、`compile_commands.json` 都是本地文件，已被忽略，不会上传 GitHub。
+
+### 3. 开发板配置
+
+`platformio.ini` 当前配置：
+
+- 开发板环境：`esp32-s3-devkitc-1`
+- 框架：Arduino
+- 串口监视器波特率：`115200`
+- 上传波特率：`921600`
+- USB CDC：已开启
+
+依赖库：
+
+- `Adafruit GFX Library`
+- `Adafruit ILI9341`
+- `Adafruit AHTX0`
+- `Adafruit NeoPixel`
+
+### 4. 常用命令
+
+编译：
+
+```powershell
+pio run
+```
+
+上传：
+
+```powershell
+pio run -t upload
+```
+
+打开串口监视器：
+
+```powershell
+pio device monitor -b 115200
+```
+
+如果上传失败，先确认 VS Code / PlatformIO 识别到正确串口；必要时在 `platformio.ini` 里临时加入：
+
+```ini
+upload_port = COM10
+monitor_port = COM10
+```
+
+把 `COM10` 换成设备管理器里实际显示的端口。
+
+## 当前功能
 
 ```text
 温湿度采集 -> 屏幕显示
@@ -12,31 +106,6 @@ ESP32-S3 智能家居演示项目，当前主线已经迁移到 PlatformIO，核
 温度 >= 28C 或手动空调键 -> 红外发射演示脉冲
 红外接收模块检测到遥控器脉冲 -> 屏幕显示 IR: RX
 ```
-
-## 软件与构建
-
-推荐使用 VS Code + PlatformIO。
-
-```powershell
-pio run
-pio run -t upload
-pio device monitor -b 115200
-```
-
-项目配置见 `platformio.ini`：
-
-- 开发板环境：`esp32-s3-devkitc-1`
-- 框架：Arduino
-- 串口波特率：`115200`
-- USB CDC：已通过 `build_flags` 开启
-- PlatformIO 构建缓存和依赖缓存放在 `D:\A-Soft\DevTools\PlatformIO\ProjectCache\SmartHomeHub`
-
-依赖库：
-
-- `Adafruit GFX Library`
-- `Adafruit ILI9341`
-- `Adafruit AHTX0`
-- `Adafruit NeoPixel`
 
 ## 硬件接线
 
@@ -123,17 +192,19 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 | `ac` | 是否处于降温控制状态 |
 | `lamp` | 手动灯光开关状态 |
 
-## 测试顺序
+## 调试顺序
 
-1. 只接 ESP32-S3，编译并上传，串口出现 `Lexin Smart Home Hub booting...`。
-2. 接 ILI9341，屏幕显示 `Smart Home Hub`，随后进入状态界面。
-3. 接 AHT20，串口显示 `AHT20: OK`，屏幕温湿度变成真实数据。
-4. 接 LD2410C，人在前方时 `ROOM` 变为 `OCCUPIED`，灯带亮暖色。
-5. 离开超过 10 秒后，`SEC` 变为 `ARMED`。
-6. 接 I2S 麦克风，在安防状态下制造较大声音，屏幕出现 `ALARM: NOISE!`，蜂鸣器响，灯带变红。
-7. 捂热 AHT20 或临时调低 `TEMP_COOLING_THRESHOLD_C`，串口出现 `[AC] Demo IR cooling command sent`。
-8. 用遥控器对准红外接收头，屏幕 `IR` 变为 `RX`。
-9. 逐个测试 5 个按键，确认串口日志和屏幕底部状态变化。
+1. 只接 ESP32-S3，执行 `pio run`，确认编译通过。
+2. 执行 `pio run -t upload` 上传程序。
+3. 执行 `pio device monitor -b 115200`，确认串口出现 `Lexin Smart Home Hub booting...`。
+4. 接 ILI9341，屏幕显示 `Smart Home Hub`，随后进入状态界面。
+5. 接 AHT20，串口显示 `AHT20: OK`，屏幕温湿度变成真实数据。
+6. 接 LD2410C，人在前方时 `ROOM` 变为 `OCCUPIED`，灯带亮暖色。
+7. 离开超过 10 秒后，`SEC` 变为 `ARMED`。
+8. 接 I2S 麦克风，在安防状态下制造较大声音，屏幕出现 `ALARM: NOISE!`，蜂鸣器响，灯带变红。
+9. 捂热 AHT20 或临时调低 `TEMP_COOLING_THRESHOLD_C`，串口出现 `[AC] Demo IR cooling command sent`。
+10. 用遥控器对准红外接收头，屏幕 `IR` 变为 `RX`。
+11. 逐个测试 5 个按键，确认串口日志和屏幕底部状态变化。
 
 ## 当前限制
 
