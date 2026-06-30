@@ -35,6 +35,7 @@ SmartHomeHub/
 │  └─ main.cpp              # 主程序
 ├─ docs/
 │  └─ competition.md        # 比赛展示、接线和验收说明
+├─ CONTRIBUTING.md          # 协作、提交和版本管理规范
 ├─ platformio.ini           # PlatformIO 构建配置
 ├─ README.md                # 项目说明
 └─ .gitignore               # 忽略本地构建产物和 IDE 缓存
@@ -275,7 +276,9 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 
 ## 贡献
 
-欢迎提交 issue 或 pull request。建议在提交前先运行：
+欢迎提交 issue 或 pull request。提交代码前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+建议在提交前先运行：
 
 ```bash
 pio run
