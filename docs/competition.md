@@ -6,6 +6,8 @@
 
 代码入口：`src/main.cpp`
 
+参数配置：`src/board/config.h`
+
 构建方式：PlatformIO，配置文件为 `platformio.ini`
 
 ## 一、项目定位
@@ -116,7 +118,7 @@ constexpr int BUTTON_ACTIVE_LEVEL = HIGH;
 
 ## 五、程序结构
 
-主循环：
+主循环保留在 `src/main.cpp`：
 
 ```cpp
 readEnvironment();
@@ -125,6 +127,22 @@ updateAutomation();
 drawUi();
 printSerialStatus();
 ```
+
+文件职责：
+
+| 文件 | 作用 |
+|---|---|
+| `src/main.cpp` | 初始化和主循环调度 |
+| `src/board/config.h` | 引脚、触发电平、阈值和时间参数 |
+| `src/board/hardware.cpp` | TFT、AHT20、灯带对象，蜂鸣器、红外发射、I2S 初始化 |
+| `src/io/sensors.cpp` | AHT20 温湿度读取和 I2S 麦克风采样 |
+| `src/io/inputs.cpp` | 人体、红外接收和按键读取 |
+| `src/app/hub_state.cpp` | 系统状态结构 |
+| `src/app/automation.cpp` | 安防、报警、空调和灯光联动 |
+| `src/app/display.cpp` | ILI9341 屏幕状态界面 |
+| `src/app/diagnostics.cpp` | 串口状态输出 |
+
+核心函数：
 
 | 函数 | 作用 |
 |---|---|

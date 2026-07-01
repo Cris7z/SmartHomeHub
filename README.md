@@ -32,7 +32,10 @@ SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目
 ```text
 SmartHomeHub/
 ├─ src/
-│  └─ main.cpp              # 主程序
+│  ├─ main.cpp              # 初始化和主循环
+│  ├─ app/                  # 应用状态、自动控制、显示、串口诊断
+│  ├─ board/                # 引脚配置、硬件对象和底层输出
+│  └─ io/                   # 输入读取、传感器采样
 ├─ docs/
 │  ├─ competition.md        # 比赛展示、接线和验收说明
 │  └─ branching.md          # 分支模型和版本管理说明
@@ -43,6 +46,20 @@ SmartHomeHub/
 ```
 
 主程序入口为 `src/main.cpp`。仓库不维护 Arduino IDE 的 `.ino` 副本，避免多个入口不同步。
+
+源码按嵌入式项目常见边界拆分：
+
+| 路径 | 职责 |
+|---|---|
+| `src/main.cpp` | 启动初始化和 superloop 调度 |
+| `src/board/config.h` | 引脚、阈值、时间参数 |
+| `src/board/hardware.*` | TFT、AHT20、灯带等硬件对象和低层输出 |
+| `src/io/sensors.*` | AHT20 和 I2S 麦克风采样 |
+| `src/io/inputs.*` | 人体、红外接收、按键读取 |
+| `src/app/hub_state.*` | 全局状态结构 |
+| `src/app/automation.*` | 安防、报警、空调和灯光联动状态机 |
+| `src/app/display.*` | ILI9341 屏幕界面 |
+| `src/app/diagnostics.*` | 串口状态输出 |
 
 ## 硬件清单
 
@@ -114,6 +131,8 @@ pio --version
 ```
 
 如果命令不存在，可先安装 VS Code 的 PlatformIO IDE 扩展。首次编译时，PlatformIO 会根据 `platformio.ini` 自动安装 ESP32 平台包和依赖库。
+
+Windows 下建议将仓库放在纯英文路径中，避免 ESP32 工具链在生成链接产物时遇到非 ASCII 路径编码问题。
 
 ## 快速开始
 
@@ -255,7 +274,7 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 
 ## 可调参数
 
-常用参数集中在 `src/main.cpp` 顶部：
+常用参数集中在 `src/board/config.h`：
 
 | 参数 | 默认值 | 说明 |
 |---|---|---|
