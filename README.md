@@ -34,7 +34,8 @@ SmartHomeHub/
 ├─ src/
 │  └─ main.cpp              # 主程序
 ├─ docs/
-│  └─ competition.md        # 比赛展示、接线和验收说明
+│  ├─ competition.md        # 比赛展示、接线和验收说明
+│  └─ branching.md          # 分支模型和版本管理说明
 ├─ CONTRIBUTING.md          # 协作、提交和版本管理规范
 ├─ platformio.ini           # PlatformIO 构建配置
 ├─ README.md                # 项目说明
@@ -276,7 +277,7 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 
 ## 贡献
 
-欢迎提交 issue 或 pull request。提交代码前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提交 issue 或 pull request。提交代码前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [docs/branching.md](docs/branching.md)。
 
 建议在提交前先运行：
 

@@ -2,6 +2,8 @@
 
 本文档用于说明 SmartHomeHub 后续修改、修 bug、提交版本和找回历史版本时的基本要求。
 
+分支模型见 [docs/branching.md](docs/branching.md)。日常开发优先从 `develop` 切短分支，`main` 只保留稳定演示版本。
+
 ## 基本流程
 
 开始修改前，先拉取最新代码：
