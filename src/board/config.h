@@ -30,12 +30,18 @@ constexpr int PIN_MIC_WS = 39;
 constexpr int PIN_MIC_SD = 40;
 
 constexpr int NEOPIXEL_COUNT = 30;
+constexpr int IR_DEMO_BURST_CYCLES = 3000;
+constexpr uint32_t IR_TEST_WINDOW_MS = 5000;
+constexpr uint32_t IR_TEST_BURST_GAP_MS = 120;
 constexpr int BUZZER_ACTIVE_LEVEL = HIGH;
 constexpr int BUTTON_ACTIVE_LEVEL = HIGH;
 constexpr int PRESENCE_ACTIVE_LEVEL = HIGH;
 constexpr int IR_RX_ACTIVE_LEVEL = LOW;
+constexpr uint32_t IR_RX_HOLD_MS = 1000;
 constexpr int MIC_SAMPLE_RATE = 16000;
+constexpr int MIC_SAMPLE_SHIFT = 8;
 constexpr int MIC_RMS_TRIGGER = 65000;
+constexpr bool MIC_DEBUG = true;
 
 constexpr float TEMP_COOLING_THRESHOLD_C = 28.0;
 constexpr uint32_t EMPTY_TO_SECURITY_MS = 10000;

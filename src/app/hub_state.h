@@ -15,11 +15,16 @@ struct HubState {
   bool manualLamp = false;
   bool manualAc = false;
   bool acCooling = false;
+  bool acCommandRequested = false;
+  bool irTestActive = false;
   float tempC = 26.5;
   float humidity = 55.0;
   uint32_t lastSeenMs = 0;
   uint32_t alarmUntilMs = 0;
   uint32_t lastAcCommandMs = 0;
+  uint32_t irReceivedUntilMs = 0;
+  uint32_t irTestUntilMs = 0;
+  uint32_t lastIrTestBurstMs = 0;
   uint32_t buzzerTestUntilMs = 0;
 };
 

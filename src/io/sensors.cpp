@@ -11,6 +11,11 @@
 namespace {
 uint32_t lastSensorReadMs = 0;
 uint32_t lastMicReadMs = 0;
+uint32_t lastMicDebugMs = 0;
+
+int32_t abs32(int32_t value) {
+  return value < 0 ? -value : value;
+}
 }
 
 void readEnvironment() {
@@ -40,22 +45,40 @@ void readMicrophone() {
   if (millis() - lastMicReadMs < 120) return;
   lastMicReadMs = millis();
 
-  int32_t samples[128];
+  int32_t samples[256];
   size_t bytesRead = 0;
-  esp_err_t result = i2s_read(I2S_NUM_0, samples, sizeof(samples), &bytesRead, 2);
+  esp_err_t result = i2s_read(I2S_NUM_0, samples, sizeof(samples), &bytesRead, pdMS_TO_TICKS(20));
   if (result != ESP_OK || bytesRead == 0) {
     state.micLevel = 0;
     state.soundTriggered = false;
+    if (MIC_DEBUG && millis() - lastMicDebugMs > 2000) {
+      lastMicDebugMs = millis();
+      Serial.printf("[MIC] read err=%d bytes=%u\n", (int)result, (unsigned)bytesRead);
+    }
     return;
   }
 
   const int count = bytesRead / sizeof(samples[0]);
   int64_t sumSquares = 0;
+  int nonzeroCount = 0;
+  int32_t peak = 0;
+  int32_t rawPeak = 0;
   for (int i = 0; i < count; i++) {
-    int32_t sample = samples[i] >> 14;
+    int32_t rawMagnitude = abs32(samples[i]);
+    if (rawMagnitude > rawPeak) rawPeak = rawMagnitude;
+    int32_t sample = samples[i] >> MIC_SAMPLE_SHIFT;
+    int32_t magnitude = abs32(sample);
+    if (magnitude > 0) nonzeroCount++;
+    if (magnitude > peak) peak = magnitude;
     sumSquares += (int64_t)sample * sample;
   }
 
   state.micLevel = sqrt((double)sumSquares / count);
   state.soundTriggered = state.micLevel > MIC_RMS_TRIGGER;
+  if (MIC_DEBUG && millis() - lastMicDebugMs > 2000) {
+    lastMicDebugMs = millis();
+    Serial.printf("[MIC] read err=%d bytes=%u samples=%d nonzero=%d rawPeak=%ld peak=%ld rms=%ld\n",
+                  (int)result, (unsigned)bytesRead, count, nonzeroCount,
+                  (long)rawPeak, (long)peak, (long)state.micLevel);
+  }
 }

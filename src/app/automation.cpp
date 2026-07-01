@@ -7,24 +7,44 @@
 #include "../board/hardware.h"
 
 void updateAutomation() {
-  const bool roomEmptyLongEnough = millis() - state.lastSeenMs > EMPTY_TO_SECURITY_MS;
+  const uint32_t now = millis();
+  const bool roomEmptyLongEnough = now - state.lastSeenMs > EMPTY_TO_SECURITY_MS;
   state.securityArmed = state.forceSecurity || (!state.presence && roomEmptyLongEnough);
 
   if (state.securityArmed && state.soundTriggered) {
     state.alarm = true;
-    state.alarmUntilMs = millis() + ALARM_HOLD_MS;
+    state.alarmUntilMs = now + ALARM_HOLD_MS;
   }
-  if (state.alarm && millis() > state.alarmUntilMs) {
+  if (state.alarm && now > state.alarmUntilMs) {
     state.alarm = false;
   }
 
   state.acCooling = state.manualAc || state.tempC >= TEMP_COOLING_THRESHOLD_C;
-  if (state.acCooling && millis() - state.lastAcCommandMs > AC_COMMAND_GAP_MS) {
-    state.lastAcCommandMs = millis();
+  if (!state.acCooling) {
+    state.acCommandRequested = false;
+  }
+
+  if (state.acCooling && (state.acCommandRequested || now - state.lastAcCommandMs > AC_COMMAND_GAP_MS)) {
+    state.acCommandRequested = false;
+    state.lastAcCommandMs = now;
     sendIrDemoBurst();
     Serial.println("[AC] Demo IR cooling command sent");
   }
 
-  buzzerWrite(state.alarm || millis() < state.buzzerTestUntilMs);
+  if (state.irTestActive) {
+    if (now < state.irTestUntilMs) {
+      if (state.lastIrTestBurstMs == 0 || now - state.lastIrTestBurstMs >= IR_TEST_BURST_GAP_MS) {
+        state.lastIrTestBurstMs = now;
+        sendIrDemoBurst();
+        Serial.println("[IR] Diagnostic burst");
+      }
+    } else {
+      state.irTestActive = false;
+      state.irTestUntilMs = 0;
+      Serial.println("[IR] Diagnostic test ended");
+    }
+  }
+
+  buzzerWrite(state.alarm || now < state.buzzerTestUntilMs);
   setLamp(state.presence || state.manualLamp, state.alarm);
 }

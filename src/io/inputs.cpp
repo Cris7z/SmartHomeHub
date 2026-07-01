@@ -24,6 +24,11 @@ int lastButtonLevel[BUTTON_COUNT] = {
   !BUTTON_ACTIVE_LEVEL
 };
 uint32_t lastButtonChangeMs[BUTTON_COUNT] = {0, 0, 0, 0, 0};
+volatile bool irPulseSeen = false;
+
+void IRAM_ATTR handleIrPulse() {
+  irPulseSeen = true;
+}
 
 void handleButtonPress(int index) {
   switch (index) {
@@ -37,7 +42,14 @@ void handleButtonPress(int index) {
       break;
     case 2:
       state.manualAc = !state.manualAc;
+      state.irTestActive = true;
+      state.irTestUntilMs = millis() + IR_TEST_WINDOW_MS;
+      state.lastIrTestBurstMs = 0;
+      if (state.manualAc || state.tempC >= TEMP_COOLING_THRESHOLD_C) {
+        state.acCommandRequested = true;
+      }
       Serial.printf("[KEY3] Manual AC: %s\n", state.manualAc ? "ON" : "OFF");
+      Serial.printf("[IR] Diagnostic test started: %lu ms\n", IR_TEST_WINDOW_MS);
       break;
     case 3:
       state.buzzerTestUntilMs = millis() + 300;
@@ -54,25 +66,43 @@ void handleButtonPress(int index) {
 
 void setupInputs() {
   pinMode(PIN_IR_RX, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PIN_IR_RX), handleIrPulse, FALLING);
   pinMode(PIN_PRESENCE_OUT, INPUT_PULLUP);
   for (int i = 0; i < BUTTON_COUNT; i++) {
-    pinMode(BUTTON_PINS[i], INPUT);
+    pinMode(BUTTON_PINS[i], INPUT_PULLDOWN);
   }
 }
 
 void readInputs() {
+  const uint32_t now = millis();
   state.presence = digitalRead(PIN_PRESENCE_OUT) == PRESENCE_ACTIVE_LEVEL;
-  state.irReceived = digitalRead(PIN_IR_RX) == IR_RX_ACTIVE_LEVEL;
+  const bool irLevelActive = digitalRead(PIN_IR_RX) == IR_RX_ACTIVE_LEVEL;
+  bool irPulseCaptured = false;
+
+  noInterrupts();
+  if (irPulseSeen) {
+    irPulseSeen = false;
+    irPulseCaptured = true;
+  }
+  interrupts();
+
+  if (irLevelActive || irPulseCaptured) {
+    if (!state.irReceived) {
+      Serial.println("[IR] RX pulse latched");
+    }
+    state.irReceivedUntilMs = now + IR_RX_HOLD_MS;
+  }
+  state.irReceived = now < state.irReceivedUntilMs;
   readMicrophone();
 
   if (state.presence) {
-    state.lastSeenMs = millis();
+    state.lastSeenMs = now;
   }
 
   for (int i = 0; i < BUTTON_COUNT; i++) {
     int buttonLevel = digitalRead(BUTTON_PINS[i]);
-    if (buttonLevel != lastButtonLevel[i] && millis() - lastButtonChangeMs[i] > 50) {
-      lastButtonChangeMs[i] = millis();
+    if (buttonLevel != lastButtonLevel[i] && now - lastButtonChangeMs[i] > 50) {
+      lastButtonChangeMs[i] = now;
       lastButtonLevel[i] = buttonLevel;
       if (buttonLevel == BUTTON_ACTIVE_LEVEL) {
         handleButtonPress(i);

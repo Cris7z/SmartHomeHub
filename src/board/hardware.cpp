@@ -46,8 +46,7 @@ void setLamp(bool on, bool alarm) {
 void sendIrDemoBurst() {
   // Demo-only 38 kHz carrier burst. It proves the IR LED is driven, but it is not
   // a real air-conditioner protocol. Replace with a learned AC library/code later.
-  const int cycles = 80;
-  for (int i = 0; i < cycles; i++) {
+  for (int i = 0; i < IR_DEMO_BURST_CYCLES; i++) {
     digitalWrite(PIN_IR_TX, HIGH);
     delayMicroseconds(13);
     digitalWrite(PIN_IR_TX, LOW);
@@ -60,7 +59,7 @@ bool setupI2sMic() {
   i2sConfig.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
   i2sConfig.sample_rate = MIC_SAMPLE_RATE;
   i2sConfig.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT;
-  i2sConfig.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
+  i2sConfig.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
   i2sConfig.communication_format = I2S_COMM_FORMAT_STAND_I2S;
   i2sConfig.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;
   i2sConfig.dma_buf_count = 4;

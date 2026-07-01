@@ -214,7 +214,7 @@ constexpr int BUTTON_ACTIVE_LEVEL = HIGH;
 |---|---|---|
 | KEY1 / GPIO1 | 切换强制安防模式 | `[KEY1] Force security` |
 | KEY2 / GPIO2 | 切换手动灯光 | `[KEY2] Manual lamp` |
-| KEY3 / GPIO41 | 切换手动空调 | `[KEY3] Manual AC` |
+| KEY3 / GPIO41 | 切换手动空调并开启 5 秒红外诊断发射 | `[KEY3] Manual AC` / `[IR] Diagnostic burst` |
 | KEY4 / GPIO13 | 蜂鸣器短测试 300ms | `[KEY4] Buzzer test` |
 | KEY5 / GPIO21 | 清除报警并退出强制安防 | `[KEY5] Alarm/security cleared` |
 
@@ -269,7 +269,7 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 8. 等无人超过 10 秒，确认 `SEC` 变为 `ARMED`。
 9. 接 I2S 麦克风，在安防状态下制造较大声音，确认触发 `ALARM: NOISE!`。
 10. 接蜂鸣器，确认报警和 KEY4 测试都能响。
-11. 接红外发射，捂热 AHT20 或临时调低 `TEMP_COOLING_THRESHOLD_C`，确认串口出现空调控制日志。
+11. 接红外发射，按 KEY3，确认串口连续出现 `[IR] Diagnostic burst`，并用手机摄像头观察红外发射头。
 12. 接红外接收，使用遥控器按键后确认 `IR: RX`。
 13. 逐个测试 5 个按键。
 
@@ -282,18 +282,21 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 | `BUTTON_ACTIVE_LEVEL` | `HIGH` | 按键触发电平 |
 | `PRESENCE_ACTIVE_LEVEL` | `HIGH` | LD2410C OUT 有人触发电平 |
 | `IR_RX_ACTIVE_LEVEL` | `LOW` | 红外接收触发电平 |
+| `IR_RX_HOLD_MS` | `1000` | IR RX latched 屏幕保持时间 |
 | `MIC_RMS_TRIGGER` | `65000` | I2S 麦克风报警阈值 |
 | `TEMP_COOLING_THRESHOLD_C` | `28.0` | 空调模拟触发温度 |
 | `EMPTY_TO_SECURITY_MS` | `10000` | 无人进入安防的等待时间 |
 | `ALARM_HOLD_MS` | `5000` | 报警保持时间 |
 | `AC_COMMAND_GAP_MS` | `15000` | 红外空调指令发送间隔 |
+| `IR_TEST_WINDOW_MS` | `5000` | KEY3 红外诊断持续时间 |
+| `IR_TEST_BURST_GAP_MS` | `120` | 红外诊断脉冲间隔 |
 
 ## 当前限制
 
-- 红外发射目前只是 38 kHz 演示脉冲，不是真实空调协议。
+- 红外发射目前只是约 78ms 的 38 kHz 演示脉冲，不是真实空调协议；按 KEY3 会开启 5 秒诊断发射，方便用手机摄像头或红外接收头验证。
 - I2S 麦克风阈值需要按现场噪声环境重新校准。
 - AHT20 未接入时，代码会使用模拟温湿度，方便先调屏幕和联动。
-- 屏幕当前每 500ms 全屏重绘，演示足够，但后续可改成局部刷新以降低闪烁。
+- 屏幕使用局部刷新，减少 ILI9341 全屏重绘闪烁。
 
 ## 贡献
 
