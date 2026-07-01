@@ -94,13 +94,13 @@ SmartHomeHub/
 | 蜂鸣器 | I/O | GPIO6 |
 | 按键 1 | OUT | GPIO1 |
 | 按键 2 | OUT | GPIO2 |
-| 按键 3 | OUT | GPIO3 |
+| 按键 3 | OUT | GPIO41 |
 | 按键 4 | OUT | GPIO13 |
 | 按键 5 | OUT | GPIO21 |
 | 红外发射 | DAT | GPIO14 |
 | I2S 麦克风 | SCK / BCLK | GPIO15 |
-| I2S 麦克风 | WS / LRCLK | GPIO19 |
-| I2S 麦克风 | SD / DOUT | GPIO20 |
+| I2S 麦克风 | WS / LRCLK | GPIO39 |
+| I2S 麦克风 | SD / DOUT | GPIO40 |
 | LD2410C | OUT | GPIO16 |
 | 红外接收 | DAT / OUT | GPIO17 |
 | WS2812B | DIN | GPIO18 |
@@ -112,6 +112,7 @@ SmartHomeHub/
 - LD2410C 通常接 5V。
 - WS2812B 使用外部 5V 电源，外部电源 GND 与 ESP32-S3 GND 必须相连。
 - WS2812B 的 DIN 建议串联 330-470 欧电阻，灯带 5V 与 GND 之间建议并联 `1000uF` 电解电容。
+- GPIO19/20 保留给 ESP32-S3 原生 USB，GPIO3 属于启动绑带脚，避免外接模块占用。
 
 ## 环境要求
 
@@ -213,7 +214,7 @@ constexpr int BUTTON_ACTIVE_LEVEL = HIGH;
 |---|---|---|
 | KEY1 / GPIO1 | 切换强制安防模式 | `[KEY1] Force security` |
 | KEY2 / GPIO2 | 切换手动灯光 | `[KEY2] Manual lamp` |
-| KEY3 / GPIO3 | 切换手动空调 | `[KEY3] Manual AC` |
+| KEY3 / GPIO41 | 切换手动空调 | `[KEY3] Manual AC` |
 | KEY4 / GPIO13 | 蜂鸣器短测试 300ms | `[KEY4] Buzzer test` |
 | KEY5 / GPIO21 | 清除报警并退出强制安防 | `[KEY5] Alarm/security cleared` |
 

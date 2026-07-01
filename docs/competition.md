@@ -80,13 +80,13 @@ ESP32 GPIO 不能接 5V 输出信号
 | WS2812B 灯带 | DIN | GPIO18 |
 | 有源蜂鸣器 | I/O | GPIO6 |
 | I2S 麦克风 | SCK / BCLK | GPIO15 |
-| I2S 麦克风 | WS / LRCLK | GPIO19 |
-| I2S 麦克风 | SD / DOUT | GPIO20 |
+| I2S 麦克风 | WS / LRCLK | GPIO39 |
+| I2S 麦克风 | SD / DOUT | GPIO40 |
 | 红外发射 | DAT | GPIO14 |
 | 红外接收 | DAT / OUT / S | GPIO17 |
 | 按键 1 | OUT | GPIO1 |
 | 按键 2 | OUT | GPIO2 |
-| 按键 3 | OUT | GPIO3 |
+| 按键 3 | OUT | GPIO41 |
 | 按键 4 | OUT | GPIO13 |
 | 按键 5 | OUT | GPIO21 |
 
@@ -97,6 +97,7 @@ ESP32 GPIO 不能接 5V 输出信号
 - LD2410C 接 5V。
 - WS2812B 使用外部 5V 电源，并与 ESP32-S3 共地。
 - 灯带 DIN 建议串 330-470 欧电阻，5V 和 GND 间建议并 1000uF 电解电容。
+- GPIO19/20 保留给 ESP32-S3 原生 USB，GPIO3 属于启动绑带脚，避免外接模块占用。
 
 ## 四、按键交互
 
@@ -110,7 +111,7 @@ constexpr int BUTTON_ACTIVE_LEVEL = HIGH;
 |---|---|
 | KEY1 / GPIO1 | 切换强制安防 |
 | KEY2 / GPIO2 | 切换手动灯光 |
-| KEY3 / GPIO3 | 切换手动空调 |
+| KEY3 / GPIO41 | 切换手动空调 |
 | KEY4 / GPIO13 | 蜂鸣器测试 300ms |
 | KEY5 / GPIO21 | 清除报警并退出强制安防 |
 

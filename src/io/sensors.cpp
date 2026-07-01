@@ -31,6 +31,12 @@ void readEnvironment() {
 }
 
 void readMicrophone() {
+  if (!state.i2sOk) {
+    state.micLevel = 0;
+    state.soundTriggered = false;
+    return;
+  }
+
   if (millis() - lastMicReadMs < 120) return;
   lastMicReadMs = millis();
 

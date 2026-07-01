@@ -4,6 +4,7 @@
 
 struct HubState {
   bool ahtOk = false;
+  bool i2sOk = false;
   bool presence = false;
   bool soundTriggered = false;
   int32_t micLevel = 0;

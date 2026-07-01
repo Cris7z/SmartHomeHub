@@ -29,7 +29,8 @@ void setup() {
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   state.ahtOk = aht.begin(&Wire);
   Serial.printf("AHT20: %s\n", state.ahtOk ? "OK" : "not found, using demo data");
-  Serial.printf("I2S mic: %s\n", setupI2sMic() ? "OK" : "not found");
+  state.i2sOk = setupI2sMic();
+  Serial.printf("I2S mic: %s\n", state.i2sOk ? "OK" : "not found");
 
   setupDisplay();
   setupStatusLamp();
