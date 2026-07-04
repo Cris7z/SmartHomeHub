@@ -7,6 +7,7 @@
 #include "../app/controls.h"
 #include "../app/event_log.h"
 #include "../app/hub_state.h"
+#include "../io/mic_processing.h"
 
 namespace {
 WebServer dashboard(80);
@@ -49,6 +50,7 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 <section class="grid">
 <div class="card"><div class="label">Indoor</div><div class="value" id="indoor">--</div></div>
 <div class="card"><div class="label">Outdoor</div><div class="value" id="outdoor">--</div></div>
+<div class="card"><div class="label">Sun</div><div class="value" id="sun">--</div></div>
 <div class="card"><div class="label">Room</div><div class="value" id="room">--</div></div>
 <div class="card"><div class="label">Security</div><div class="value" id="sec">--</div></div>
 <div class="card"><div class="label">AI Noise</div><div class="value" id="noise">--</div></div>
@@ -63,12 +65,13 @@ function yn(v){return v?'ON':'OFF'}
 async function refresh(){
  const s=await (await fetch('/api/state')).json();
  indoor.textContent=s.tempC.toFixed(1)+'C / '+s.humidity.toFixed(0)+'%';
- outdoor.textContent=s.weatherReady?(s.outdoorTempC.toFixed(1)+'C '+s.weather):'WAIT';
+ outdoor.textContent=s.weatherReady?(s.location+' '+s.outdoorTempC.toFixed(1)+'C '+s.weather):'WAIT';
+ sun.textContent=s.weatherReady?(s.sunrise+' / '+s.sunset):'--';
  room.textContent=s.presence?'OCCUPIED':'EMPTY';
  room.className='value '+(s.presence?'ok':'warn');
  sec.textContent=s.securityArmed?'ARMED':'OFF';
  sec.className='value '+(s.alarm?'bad':(s.securityArmed?'warn':'ok'));
- noise.textContent=s.micLevel+' / '+s.micThreshold;
+ noise.textContent=s.micPercent+'%';
  noise.className='value '+(s.soundTriggered?'warn':'ok');
  guard.textContent=s.aiRiskScore+' '+s.aiRisk;
  guard.className='value '+(s.aiRiskScore>=80?'bad':(s.aiRiskScore>=55?'warn':'ok'));
@@ -88,7 +91,7 @@ String boolJson(bool value) {
 
 String stateJson() {
   String json;
-  json.reserve(700);
+  json.reserve(940);
   json += "{";
   json += "\"tempC\":" + String(state.tempC, 1) + ",";
   json += "\"humidity\":" + String(state.humidity, 0) + ",";
@@ -99,6 +102,7 @@ String stateJson() {
   json += "\"micLevel\":" + String((long)state.micLevel) + ",";
   json += "\"micBaseline\":" + String((long)state.micBaseline) + ",";
   json += "\"micThreshold\":" + String((long)state.micThreshold) + ",";
+  json += "\"micPercent\":" + String(noisePercentFor(state.micLevel, state.micThreshold)) + ",";
   json += "\"aiRiskScore\":" + String(state.aiRiskScore) + ",";
   json += "\"aiRisk\":\"" + String(state.aiRiskText) + "\",";
   json += "\"acCooling\":" + boolJson(state.acCooling) + ",";
@@ -108,8 +112,14 @@ String stateJson() {
   json += "\"ip\":\"" + String(state.ipText) + "\",";
   json += "\"time\":\"" + String(state.timeText) + "\",";
   json += "\"weatherReady\":" + boolJson(state.weatherReady) + ",";
+  json += "\"locationReady\":" + boolJson(state.locationReady) + ",";
+  json += "\"location\":\"" + String(state.locationText) + "\",";
+  json += "\"timezone\":\"" + String(state.timezoneText) + "\",";
   json += "\"outdoorTempC\":" + String(state.outdoorTempC, 1) + ",";
   json += "\"weather\":\"" + String(state.weatherText) + "\",";
+  json += "\"windKph\":" + String(state.windKph, 1) + ",";
+  json += "\"sunrise\":\"" + String(state.sunriseText) + "\",";
+  json += "\"sunset\":\"" + String(state.sunsetText) + "\",";
   json += "\"events\":[";
   for (uint8_t i = 0; i < state.eventLogCount; i++) {
     if (i) json += ",";

@@ -2,6 +2,8 @@
 
 项目名称：乐鑫·智居 SmartHomeHub
 
+版本：V1.0
+
 主控：ESP32-S3
 
 代码入口：`src/main.cpp`
@@ -19,7 +21,7 @@
 ```text
 有人 -> 灯带亮，安防关闭
 无人超过 10 秒 -> 自动进入安防
-安防状态下检测到大声音 -> 蜂鸣器报警，灯带变红，屏幕显示报警
+安防状态下检测到大声音 -> 蜂鸣器报警，灯带红色闪烁，安静 5 秒后自动恢复
 温度 >= 28C 或按下空调键 -> 发送红外降温演示脉冲
 遥控器红外信号进入接收头 -> 屏幕显示 IR: RX
 ```
@@ -112,7 +114,7 @@ constexpr int BUTTON_ACTIVE_LEVEL = HIGH;
 | KEY1 / GPIO1 | 切换强制安防 |
 | KEY2 / GPIO2 | 切换手动灯光 |
 | KEY3 / GPIO41 | 切换手动空调 |
-| KEY4 / GPIO13 | 蜂鸣器测试 300ms |
+| KEY4 / GPIO13 | 切换屏幕页面 |
 | KEY5 / GPIO21 | 清除报警并退出强制安防 |
 
 如果按键实际反了，把 `BUTTON_ACTIVE_LEVEL` 改成 `LOW`。
@@ -137,6 +139,7 @@ printSerialStatus();
 | `src/board/config.h` | 引脚、触发电平、阈值和时间参数 |
 | `src/board/hardware.cpp` | TFT、AHT20、灯带对象，蜂鸣器、红外发射、I2S 初始化 |
 | `src/io/sensors.cpp` | AHT20 温湿度读取和 I2S 麦克风采样 |
+| `src/io/mic_processing.*` | I2S 麦克风有效槽位选择、去直流、RMS 和百分比换算 |
 | `src/io/inputs.cpp` | 人体、红外接收和按键读取 |
 | `src/app/hub_state.cpp` | 系统状态结构 |
 | `src/app/automation.cpp` | 安防、报警、空调和灯光联动 |
@@ -150,10 +153,10 @@ printSerialStatus();
 | `setup()` | 初始化串口、GPIO、I2C、AHT20、I2S 麦克风、TFT、灯带 |
 | `readEnvironment()` | 每 2 秒读取 AHT20；传感器不存在时使用模拟数据 |
 | `readInputs()` | 读取人体、红外、麦克风和五个按键 |
-| `readMicrophone()` | 通过 I2S 采样计算 RMS 声音强度 |
+| `readMicrophone()` | 通过 I2S 采样计算去直流和平滑后的相对声音强度 |
 | `handleButtonPress()` | 处理五个按键动作 |
 | `updateAutomation()` | 计算安防、报警、空调、蜂鸣器和灯带状态 |
-| `drawUi()` | 每 500ms 刷新 ILI9341 状态界面 |
+| `drawUi()` | 局部刷新 ILI9341 四页状态界面 |
 | `printSerialStatus()` | 每 2 秒输出完整调试状态 |
 
 ## 六、屏幕和串口
@@ -161,24 +164,16 @@ printSerialStatus();
 屏幕显示：
 
 ```text
-Lexin Smart Home
-
-温度      湿度
-ROOM     OCCUPIED / EMPTY
-SEC      ARMED / OFF
-AC       COOLING / STANDBY
-IR       RX / IDLE
-
-底部状态条：
-ALARM: NOISE!
-MODE: FORCED SECURITY
-MANUAL: LAMP / AC
+HOME      室内温湿度、ROOM、SEC、AC、IR
+WEATHER   室外温度、天气、城市、日出、日落、Wi-Fi
+SYSTEM    噪声百分比、BLE、声音状态、触发线、灯光模式、IR TEST
+AI GUARD  风险分数、AI 状态、最近 4 条事件日志
 ```
 
 串口输出示例：
 
 ```text
-T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
+T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 micPct=19% ir=0 alarm=0 ac=0 lamp=0
 ```
 
 ## 七、测试顺序
@@ -190,8 +185,8 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 5. 接 LD2410C，人在前面时 `ROOM` 变为 `OCCUPIED`。
 6. 接 WS2812B，人来灯亮，人走后自动熄灭。
 7. 等无人超过 10 秒，`SEC` 变为 `ARMED`。
-8. 接 I2S 麦克风，安防状态下制造较大声音，触发 `ALARM: NOISE!`。
-9. 接蜂鸣器，确认报警和 KEY4 测试都能响。
+8. 接 I2S 麦克风，切到 SYSTEM 页观察 `NOISE` 百分比；安防状态下制造较大声音，接近或超过 `100%` 后触发 `ALARM: NOISE!`，灯带红色闪烁；停止制造噪声后约 5 秒自动恢复。
+9. 接蜂鸣器，确认报警时蜂鸣器能响。
 10. 接红外发射，调低温度阈值或捂热 AHT20，确认串口出现空调控制日志。
 11. 接红外接收，遥控器按键后确认 `IR: RX`。
 12. 逐个测试 5 个按键。
@@ -202,14 +197,14 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 ir=0 alarm=0 ac=0 lamp=0
 2. 系统能通过 LD2410C 判断有人/无人。
 3. 系统能在人来时自动亮灯，人走后自动进入安防。
 4. 系统能在无人安防状态下检测异常声音并触发蜂鸣器报警。
-5. 系统能通过 RGB 灯带反馈有人、报警等状态。
+5. 系统能通过 RGB 灯带反馈有人、报警等状态，报警时红色闪烁。
 6. 系统能根据温度状态模拟红外空调控制。
 7. 系统能接收红外遥控器脉冲并在屏幕显示状态。
-8. 系统支持 5 个实体按键进行模式、灯光、空调、蜂鸣器测试和报警清除。
+8. 系统支持 5 个实体按键进行安防、灯光、空调、屏幕翻页和报警清除。
 9. 系统能通过串口输出全部传感器和执行器状态，方便调试。
 
 ## 九、待优化点
 
 1. 红外发射目前不是具体空调协议，后续需要接入真实空调码库或学习码。
-2. I2S 麦克风阈值 `MIC_RMS_TRIGGER` 需要在比赛现场按噪声环境调参。
-3. 屏幕刷新是全屏刷新，后续可改成局部刷新减少闪烁。
+2. I2S 麦克风输出的是相对声音强度，不是标准 dB；阈值 `MIC_RMS_TRIGGER`、自适应余量和平滑权重需要在比赛现场按噪声环境调参。
+3. 屏幕已改为局部刷新；如现场仍有闪烁，优先检查供电、SPI 接线和屏幕背光稳定性。

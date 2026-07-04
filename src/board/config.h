@@ -43,6 +43,7 @@ constexpr int MIC_SAMPLE_SHIFT = 8;
 constexpr int MIC_RMS_TRIGGER = 65000;
 constexpr int MIC_RMS_ADAPT_MARGIN = 35000;
 constexpr int MIC_RMS_ADAPT_MULTIPLIER_PERCENT = 240;
+constexpr int MIC_SMOOTH_WEIGHT_PERCENT = 20;
 constexpr bool MIC_DEBUG = true;
 
 constexpr float TEMP_COOLING_THRESHOLD_C = 28.0;

@@ -10,6 +10,7 @@
 #include "../app/controls.h"
 #include "../app/event_log.h"
 #include "../app/hub_state.h"
+#include "../io/mic_processing.h"
 
 namespace {
 constexpr char BLE_DEVICE_NAME[] = "SmartHomeHub";
@@ -26,7 +27,7 @@ String boolJson(bool value) {
 
 String stateJson() {
   String json;
-  json.reserve(640);
+  json.reserve(860);
   json += "{";
   json += "\"tempC\":" + String(state.tempC, 1) + ",";
   json += "\"humidity\":" + String(state.humidity, 0) + ",";
@@ -35,6 +36,7 @@ String stateJson() {
   json += "\"micLevel\":" + String((long)state.micLevel) + ",";
   json += "\"micBaseline\":" + String((long)state.micBaseline) + ",";
   json += "\"micThreshold\":" + String((long)state.micThreshold) + ",";
+  json += "\"micPercent\":" + String(noisePercentFor(state.micLevel, state.micThreshold)) + ",";
   json += "\"irReceived\":" + boolJson(state.irReceived) + ",";
   json += "\"securityArmed\":" + boolJson(state.securityArmed) + ",";
   json += "\"alarm\":" + boolJson(state.alarm) + ",";
@@ -52,9 +54,14 @@ String stateJson() {
   json += "\"time\":\"" + String(state.timeText) + "\",";
   json += "\"date\":\"" + String(state.dateText) + "\",";
   json += "\"weatherReady\":" + boolJson(state.weatherReady) + ",";
+  json += "\"locationReady\":" + boolJson(state.locationReady) + ",";
+  json += "\"location\":\"" + String(state.locationText) + "\",";
+  json += "\"timezone\":\"" + String(state.timezoneText) + "\",";
   json += "\"outdoorTempC\":" + String(state.outdoorTempC, 1) + ",";
   json += "\"weather\":\"" + String(state.weatherText) + "\",";
   json += "\"windKph\":" + String(state.windKph, 1) + ",";
+  json += "\"sunrise\":\"" + String(state.sunriseText) + "\",";
+  json += "\"sunset\":\"" + String(state.sunsetText) + "\",";
   json += "\"events\":[";
   for (uint8_t i = 0; i < state.eventLogCount; i++) {
     if (i) json += ",";

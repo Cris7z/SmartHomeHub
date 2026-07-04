@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+#include "alarm_logic.h"
 #include "event_log.h"
 #include "hub_state.h"
 #include "../board/config.h"
@@ -14,20 +15,20 @@ void updateAutomation() {
   const bool roomEmptyLongEnough = now - state.lastSeenMs > EMPTY_TO_SECURITY_MS;
   state.securityArmed = state.forceSecurity || (!state.presence && roomEmptyLongEnough);
 
-  const bool alarmJustTriggered = state.securityArmed && state.soundTriggered && !state.alarm;
-  if (state.securityArmed && state.soundTriggered) {
-    state.alarm = true;
-    state.alarmUntilMs = now + ALARM_HOLD_MS;
-    if (alarmJustTriggered) {
-      logHubEvent("ALARM noise");
-      if (state.lastPhoneAlertMs == 0 || now - state.lastPhoneAlertMs > PHONE_ALERT_COOLDOWN_MS) {
-        state.lastPhoneAlertMs = now;
-        sendPhoneAlert();
-      }
+  const AlarmStateUpdate alarmUpdate = updateAlarmState(
+      state.securityArmed, state.soundTriggered, state.alarm, state.alarmUntilMs, now, ALARM_HOLD_MS);
+  state.alarm = alarmUpdate.alarm;
+  state.alarmUntilMs = alarmUpdate.alarmUntilMs;
+  if (alarmUpdate.justTriggered) {
+    logHubEvent("ALARM noise");
+    if (state.lastPhoneAlertMs == 0 || now - state.lastPhoneAlertMs > PHONE_ALERT_COOLDOWN_MS) {
+      state.lastPhoneAlertMs = now;
+      sendPhoneAlert();
     }
   }
-  if (state.alarm && now > state.alarmUntilMs) {
-    state.alarm = false;
+  if (alarmUpdate.justCleared) {
+    logHubEvent("ALARM clear");
+    Serial.println("[ALARM] quiet for 5s, cleared");
   }
 
   state.acCooling = state.manualAc || state.tempC >= TEMP_COOLING_THRESHOLD_C;

@@ -2,20 +2,17 @@
 
 #include <Arduino.h>
 #include <driver/i2s.h>
-#include <math.h>
 
 #include "../app/hub_state.h"
 #include "../board/config.h"
 #include "../board/hardware.h"
+#include "mic_processing.h"
 
 namespace {
 uint32_t lastSensorReadMs = 0;
 uint32_t lastMicReadMs = 0;
 uint32_t lastMicDebugMs = 0;
-
-int32_t abs32(int32_t value) {
-  return value < 0 ? -value : value;
-}
+int32_t smoothedMicLevel = 0;
 
 int32_t updateAdaptiveMicThreshold(int32_t level) {
   if (level <= 0) {
@@ -60,6 +57,7 @@ void readEnvironment() {
 void readMicrophone() {
   if (!state.i2sOk) {
     state.micLevel = 0;
+    smoothedMicLevel = 0;
     state.soundTriggered = false;
     return;
   }
@@ -72,6 +70,7 @@ void readMicrophone() {
   esp_err_t result = i2s_read(I2S_NUM_0, samples, sizeof(samples), &bytesRead, pdMS_TO_TICKS(20));
   if (result != ESP_OK || bytesRead == 0) {
     state.micLevel = 0;
+    smoothedMicLevel = 0;
     state.soundTriggered = false;
     if (MIC_DEBUG && millis() - lastMicDebugMs > 2000) {
       lastMicDebugMs = millis();
@@ -81,28 +80,20 @@ void readMicrophone() {
   }
 
   const int count = bytesRead / sizeof(samples[0]);
-  int64_t sumSquares = 0;
-  int nonzeroCount = 0;
-  int32_t peak = 0;
-  int32_t rawPeak = 0;
-  for (int i = 0; i < count; i++) {
-    int32_t rawMagnitude = abs32(samples[i]);
-    if (rawMagnitude > rawPeak) rawPeak = rawMagnitude;
-    int32_t sample = samples[i] >> MIC_SAMPLE_SHIFT;
-    int32_t magnitude = abs32(sample);
-    if (magnitude > 0) nonzeroCount++;
-    if (magnitude > peak) peak = magnitude;
-    sumSquares += (int64_t)sample * sample;
-  }
-
-  state.micLevel = sqrt((double)sumSquares / count);
+  const MicAnalysis analysis = analyzeI2sMicSamples(samples, count, MIC_SAMPLE_SHIFT);
+  smoothedMicLevel = analysis.valid
+      ? smoothMicLevel(smoothedMicLevel, analysis.rms, MIC_SMOOTH_WEIGHT_PERCENT)
+      : 0;
+  state.micLevel = smoothedMicLevel;
   const int32_t threshold = updateAdaptiveMicThreshold(state.micLevel);
   state.soundTriggered = state.micLevel > threshold;
   if (MIC_DEBUG && millis() - lastMicDebugMs > 2000) {
     lastMicDebugMs = millis();
-    Serial.printf("[MIC] read err=%d bytes=%u samples=%d nonzero=%d rawPeak=%ld peak=%ld rms=%ld base=%ld thr=%ld\n",
-                  (int)result, (unsigned)bytesRead, count, nonzeroCount,
-                  (long)rawPeak, (long)peak, (long)state.micLevel,
-                  (long)state.micBaseline, (long)threshold);
+    Serial.printf("[MIC] read err=%d bytes=%u samples=%d used=%d rawPeak=%ld dc=%ld acPeak=%ld rms=%ld smooth=%ld base=%ld thr=%ld pct=%d\n",
+                  (int)result, (unsigned)bytesRead, count, analysis.sampleCount,
+                  (long)analysis.rawPeak, (long)analysis.dcMean,
+                  (long)analysis.acPeak, (long)analysis.rms,
+                  (long)state.micLevel, (long)state.micBaseline,
+                  (long)threshold, noisePercentFor(state.micLevel, threshold));
   }
 }

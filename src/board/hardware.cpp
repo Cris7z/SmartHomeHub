@@ -4,6 +4,7 @@
 #include <driver/i2s.h>
 
 #include "config.h"
+#include "lamp_effect.h"
 
 Adafruit_ILI9341 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_MOSI, PIN_TFT_SCK, PIN_TFT_RST);
 Adafruit_AHTX0 aht;
@@ -30,12 +31,8 @@ void buzzerWrite(bool on) {
 }
 
 void setLamp(bool on, bool alarm) {
-  uint32_t color = strip.Color(0, 0, 0);
-  if (alarm) {
-    color = strip.Color(255, 0, 0);
-  } else if (on) {
-    color = strip.Color(255, 180, 80);
-  }
+  const LampColor lampColor = lampColorFor(on, alarm, millis());
+  const uint32_t color = strip.Color(lampColor.r, lampColor.g, lampColor.b);
 
   for (int i = 0; i < NEOPIXEL_COUNT; i++) {
     strip.setPixelColor(i, color);
