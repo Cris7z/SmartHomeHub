@@ -4,6 +4,7 @@
 
 #include "../app/hub_state.h"
 #include "../board/config.h"
+#include "radar_filter.h"
 #include "sensors.h"
 
 namespace {
@@ -25,6 +26,8 @@ int lastButtonLevel[BUTTON_COUNT] = {
 };
 uint32_t lastButtonChangeMs[BUTTON_COUNT] = {0, 0, 0, 0, 0};
 volatile bool irPulseSeen = false;
+RadarPresenceFilter radarFilter;
+bool lastLoggedPresence = false;
 
 void IRAM_ATTR handleIrPulse() {
   irPulseSeen = true;
@@ -75,7 +78,12 @@ void setupInputs() {
 
 void readInputs() {
   const uint32_t now = millis();
-  state.presence = digitalRead(PIN_PRESENCE_OUT) == PRESENCE_ACTIVE_LEVEL;
+  const bool rawPresence = digitalRead(PIN_PRESENCE_OUT) == PRESENCE_ACTIVE_LEVEL;
+  state.presence = radarFilter.update(rawPresence, now);
+  if (state.presence != lastLoggedPresence) {
+    lastLoggedPresence = state.presence;
+    Serial.printf("[RADAR] %s\n", state.presence ? "occupied" : "empty");
+  }
   const bool irLevelActive = digitalRead(PIN_IR_RX) == IR_RX_ACTIVE_LEVEL;
   bool irPulseCaptured = false;
 
