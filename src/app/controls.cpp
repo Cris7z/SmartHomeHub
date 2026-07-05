@@ -4,10 +4,36 @@
 
 #include "event_log.h"
 #include "hub_state.h"
+#include "shortcut_macro.h"
 #include "../board/config.h"
 
 namespace {
 constexpr uint8_t DISPLAY_PAGE_COUNT = 4;
+
+void applyShortcutMacro(ShortcutMacroKind kind, const char *label) {
+  const ShortcutMacroPreset preset = shortcutMacroPreset(kind);
+
+  state.forceSecurity = preset.forceSecurity;
+  state.alarm = preset.alarm;
+  state.lampOverride = preset.lampOverride;
+  state.manualLamp = preset.manualLamp;
+  state.manualAc = preset.manualAc;
+  state.acCommandRequested = false;
+  state.irTestActive = false;
+  state.irTestUntilMs = 0;
+  state.lastIrTestBurstMs = 0;
+  state.displayPage = preset.displayPage;
+
+  logHubEvent(preset.eventText);
+  Serial.printf(
+    "[%s] Macro %s: security=%s lamp=%s page=%u\n",
+    label,
+    preset.serialName,
+    state.forceSecurity ? "ON" : "AUTO",
+    state.lampOverride ? (state.manualLamp ? "ON" : "OFF") : "AUTO",
+    state.displayPage
+  );
+}
 }
 
 void applyHubCommand(HubCommand command, const char *source) {
@@ -50,6 +76,15 @@ void applyHubCommand(HubCommand command, const char *source) {
       state.lampOverride = false;
       logHubEvent("CLEAR alarm");
       Serial.printf("[%s] Alarm/security cleared\n", label);
+      break;
+    case HubCommand::RunMacroHome:
+      applyShortcutMacro(ShortcutMacroKind::Home, label);
+      break;
+    case HubCommand::RunMacroAway:
+      applyShortcutMacro(ShortcutMacroKind::Away, label);
+      break;
+    case HubCommand::RunMacroNight:
+      applyShortcutMacro(ShortcutMacroKind::Night, label);
       break;
   }
 }

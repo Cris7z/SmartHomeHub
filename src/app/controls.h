@@ -5,7 +5,10 @@ enum class HubCommand {
   ToggleLamp,
   ToggleAc,
   NextDisplayPage,
-  ClearAlarmSecurity
+  ClearAlarmSecurity,
+  RunMacroHome,
+  RunMacroAway,
+  RunMacroNight
 };
 
 void applyHubCommand(HubCommand command, const char *source);

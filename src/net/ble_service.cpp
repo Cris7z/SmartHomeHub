@@ -84,6 +84,12 @@ bool runCommand(const String &command) {
     applyHubCommand(HubCommand::NextDisplayPage, "BLE");
   } else if (command == "clear") {
     applyHubCommand(HubCommand::ClearAlarmSecurity, "BLE");
+  } else if (command == "home" || command == "macro_home") {
+    applyHubCommand(HubCommand::RunMacroHome, "BLE");
+  } else if (command == "away" || command == "macro_away") {
+    applyHubCommand(HubCommand::RunMacroAway, "BLE");
+  } else if (command == "night" || command == "macro_night") {
+    applyHubCommand(HubCommand::RunMacroNight, "BLE");
   } else {
     Serial.println("[BLE] Unknown command");
     return false;

@@ -30,11 +30,11 @@ h1{font-size:24px;margin:0 0 12px;color:#fff}
 .label{font-size:12px;color:#8b949e;text-transform:uppercase}
 .value{font-size:26px;margin-top:6px;color:#58a6ff}
 .ok{color:#3fb950}.warn{color:#f2cc60}.bad{color:#ff7b72}
-.buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0}
+.buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
 button{height:42px;border:0;border-radius:8px;background:#238636;color:#fff;font-weight:700}
 button.secondary{background:#30363d}
 ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
-@media(max-width:560px){.grid,.buttons{grid-template-columns:1fr 1fr}.buttons button:last-child{grid-column:span 2}}
+@media(max-width:560px){.grid,.buttons{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -46,6 +46,9 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 <button onclick="cmd('ac')">AC / IR</button>
 <button class="secondary" onclick="cmd('page')">Page</button>
 <button class="secondary" onclick="cmd('clear')">Clear</button>
+<button class="secondary" onclick="cmd('home')">Home</button>
+<button class="secondary" onclick="cmd('away')">Away</button>
+<button class="secondary" onclick="cmd('night')">Night</button>
 </div>
 <section class="grid">
 <div class="card"><div class="label">Indoor</div><div class="value" id="indoor">--</div></div>
@@ -140,6 +143,12 @@ bool runDashboardCommand(const String &command) {
     applyHubCommand(HubCommand::NextDisplayPage, "WEB");
   } else if (command == "clear") {
     applyHubCommand(HubCommand::ClearAlarmSecurity, "WEB");
+  } else if (command == "home" || command == "macro_home") {
+    applyHubCommand(HubCommand::RunMacroHome, "WEB");
+  } else if (command == "away" || command == "macro_away") {
+    applyHubCommand(HubCommand::RunMacroAway, "WEB");
+  } else if (command == "night" || command == "macro_night") {
+    applyHubCommand(HubCommand::RunMacroNight, "WEB");
   } else {
     return false;
   }

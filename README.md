@@ -1,6 +1,6 @@
 # SmartHomeHub
 
-当前版本：V1.0
+当前版本：V1.1
 
 SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目使用 PlatformIO + Arduino 框架开发，集成温湿度采集、人体存在检测、灯光联动、无人安防、声音报警、红外收发、时间天气、远程预警、Web 控制台、BLE 控制和 TFT 屏幕状态展示。
 
@@ -20,6 +20,7 @@ SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目
 - PushPlus 远程报警推送
 - 浏览器 Web Dashboard 状态查看和控制
 - BLE 状态广播和命令控制
+- Web / BLE 快捷键宏场景：Home、Away、Night
 - AI Guard 风险评分和最近事件日志
 - 5 个实体按键控制安防、灯光、空调、屏幕翻页和报警清除
 - 串口输出完整调试状态
@@ -34,6 +35,7 @@ SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目
 红外接收模块检测到遥控器脉冲 -> 屏幕显示 IR: RX
 连接 Wi-Fi -> IP 定位城市、同步时间、拉取当地天气和日出日落、启动 Web Dashboard
 安防报警 -> 本地蜂鸣器/灯带报警，并在配置 PushPlus 后发送远程预警
+快捷键宏 -> Home 回到居家自动模式，Away 开启离家安防，Night 开启夜间安防并显示天气时间页
 ```
 
 ## 项目结构
@@ -69,6 +71,7 @@ SmartHomeHub/
 | `src/app/hub_state.*` | 全局状态结构 |
 | `src/app/automation.*` | 安防、报警、空调和灯光联动状态机 |
 | `src/app/controls.*` | 按键、Web、BLE 共用的控制命令入口 |
+| `src/app/shortcut_macro.*` | Home / Away / Night 快捷键宏场景预设 |
 | `src/app/ai_guard.*` | 基于状态和声音强度计算 AI Guard 风险分数 |
 | `src/app/event_log.*` | 最近事件日志 |
 | `src/app/display.*` | ILI9341 四页屏幕界面 |
@@ -322,6 +325,9 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 micPct=19% base=10000 thr=
 | `ac` | 切换手动空调并启动红外诊断发射 |
 | `page` / `mode` | 切换屏幕页面 |
 | `clear` | 清除报警并退出强制安防 |
+| `home` / `macro_home` | 居家宏：退出强制安防，恢复灯光自动联动，回到 HOME 页 |
+| `away` / `macro_away` | 离家宏：开启强制安防，灯光手动关闭，切到 AI GUARD 页 |
+| `night` / `macro_night` | 夜间宏：开启强制安防，灯光手动关闭，切到 WEATHER 页 |
 
 Web JSON 状态接口：
 
@@ -359,7 +365,8 @@ BLE 设备名为 `SmartHomeHub`。BLE 服务使用 Nordic UART 风格 UUID：
 16. 浏览器打开 `http://板子IP/`，确认 Web Dashboard 能显示状态并能执行按钮控制。
 17. 打开 `http://板子IP/api/state`，确认返回 JSON 状态，包含 `location`、`timezone`、`sunrise`、`sunset`。
 18. 用手机 BLE 工具搜索 `SmartHomeHub`，读取 State 特征，向 Command 特征写入 `security`、`lamp`、`ac`、`page`、`clear` 验证控制。
-19. 配置 PushPlus token 后，在无人安防状态下制造较大声音，确认本地报警且串口出现 `[PushPlus] HTTP code`，手机收到远程预警。
+19. 在 Web Dashboard 点击 `Home`、`Away`、`Night`，或向 BLE Command 特征写入 `home`、`away`、`night`，确认页面、安防和灯光状态按宏场景切换。
+20. 配置 PushPlus token 后，在无人安防状态下制造较大声音，确认本地报警且串口出现 `[PushPlus] HTTP code`，手机收到远程预警。
 
 ## 可调参数
 
