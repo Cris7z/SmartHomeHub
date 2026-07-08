@@ -13,6 +13,9 @@ int main() {
 
   assert(source.find("SpeechRecognition") != std::string::npos);
   assert(source.find("listenXiaoZhi") != std::string::npos);
+  assert(source.find("speechSynthesis") != std::string::npos);
+  assert(source.find("speakXiaoZhiReply") != std::string::npos);
+  assert(source.find("waitXiaoZhiReply") != std::string::npos);
   assert(source.find("prompt=") != std::string::npos);
   assert(source.find("triggerXiaozhiAiWithPrompt") != std::string::npos);
   return 0;

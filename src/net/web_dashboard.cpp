@@ -81,7 +81,8 @@ async function sendXiaoZhi(prompt){
  let url='/cmd?name=xiaozhi';
  if(prompt){url+='&prompt='+encodeURIComponent(prompt);}
  await fetch(url);
- refresh();
+ await refresh();
+ waitXiaoZhiReply();
 }
 async function askXiaoZhi(){
  const input=document.getElementById('xzask');
@@ -109,6 +110,26 @@ function listenXiaoZhi(){
  rec.onend=function(){if(button.textContent==='...')button.textContent='Talk';};
  rec.start();
 }
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function speakXiaoZhiReply(text){
+ if(!text||!('speechSynthesis' in window))return;
+ const u=new SpeechSynthesisUtterance(text);
+ u.lang='zh-CN';
+ u.rate=1.08;
+ speechSynthesis.cancel();
+ speechSynthesis.speak(u);
+}
+async function waitXiaoZhiReply(){
+ for(let i=0;i<18;i++){
+  await sleep(1000);
+  const s=await refresh();
+  const reply=s.xiaozhiReply||'';
+  if(s.xiaozhiPhase==='IDLE'&&reply&&reply!=='Listening...'&&reply!=='Cloud endpoint ready'&&reply!=='Local demo ready'){
+   speakXiaoZhiReply(reply);
+   return;
+  }
+ }
+}
 function yn(v){return v?'ON':'OFF'}
 async function refresh(){
  const s=await (await fetch('/api/state')).json();
@@ -130,6 +151,7 @@ async function refresh(){
  xzprompt.textContent=s.xiaozhiPrompt;
  xzreply.textContent=s.xiaozhiReply;
  events.innerHTML=(s.events.length?s.events:['No events']).map(e=>'<li>'+e+'</li>').join('');
+ return s;
 }
 setInterval(refresh,2000);refresh();
 </script>
