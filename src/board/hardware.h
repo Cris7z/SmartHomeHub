@@ -20,3 +20,8 @@ bool queueSpeakerTone(uint16_t frequencyHz, uint16_t durationMs);
 bool queueSpeakerPcmClip(const int16_t *samples, size_t sampleCount);
 void updateSpeakerAudio();
 bool isSpeakerTonePlaying();
+bool beginStreamingSpeaker(uint32_t sampleRate);
+size_t queueStreamingSpeakerPcm(const uint8_t *littleEndianBytes, size_t byteCount);
+void endStreamingSpeaker();
+bool streamingSpeakerActive();
+bool streamingSpeakerOverflowed();

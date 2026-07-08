@@ -6,6 +6,7 @@
 #include "config.h"
 #include "lamp_effect.h"
 #include "speaker_tone.h"
+#include "streaming_speaker.h"
 
 Adafruit_ILI9341 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_MOSI, PIN_TFT_SCK, PIN_TFT_RST);
 Adafruit_AHTX0 aht;
@@ -142,7 +143,21 @@ bool setupI2sSpeaker() {
   }
   i2s_zero_dma_buffer(I2S_NUM_1);
   speakerInstalled = true;
+  setupStreamingSpeaker(VOICE_OUTPUT_SAMPLE_RATE * 2);
   return true;
+}
+
+void cancelSpeakerLocalPlayback() {
+  speakerToneActive = false;
+  speakerToneFrameIndex = 0;
+  speakerToneTotalFrames = 0;
+  speakerClipActive = false;
+  speakerClipSamples = nullptr;
+  speakerClipSampleCount = 0;
+  speakerClipFrameIndex = 0;
+  if (speakerInstalled) {
+    i2s_zero_dma_buffer(I2S_NUM_1);
+  }
 }
 
 bool queueSpeakerTone(uint16_t frequencyHz, uint16_t durationMs) {
@@ -150,10 +165,8 @@ bool queueSpeakerTone(uint16_t frequencyHz, uint16_t durationMs) {
     return false;
   }
 
-  speakerClipActive = false;
-  speakerClipSamples = nullptr;
-  speakerClipSampleCount = 0;
-  speakerClipFrameIndex = 0;
+  endStreamingSpeaker();
+  cancelSpeakerLocalPlayback();
   speakerToneFrequency = frequencyHz;
   speakerToneAmplitude = SPEAKER_TONE_AMPLITUDE;
   speakerToneFrameIndex = 0;
@@ -167,7 +180,8 @@ bool queueSpeakerPcmClip(const int16_t *samples, size_t sampleCount) {
     return false;
   }
 
-  speakerToneActive = false;
+  endStreamingSpeaker();
+  cancelSpeakerLocalPlayback();
   speakerClipSamples = samples;
   speakerClipSampleCount = sampleCount;
   speakerClipFrameIndex = 0;
@@ -176,6 +190,11 @@ bool queueSpeakerPcmClip(const int16_t *samples, size_t sampleCount) {
 }
 
 void updateSpeakerAudio() {
+  if (streamingSpeakerActive()) {
+    updateStreamingSpeaker();
+    return;
+  }
+
   if (!speakerInstalled || (!speakerToneActive && !speakerClipActive)) {
     return;
   }
@@ -229,5 +248,5 @@ void updateSpeakerAudio() {
 }
 
 bool isSpeakerTonePlaying() {
-  return speakerToneActive || speakerClipActive;
+  return speakerToneActive || speakerClipActive || streamingSpeakerActive();
 }
