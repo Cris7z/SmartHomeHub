@@ -209,15 +209,7 @@ copy src\net\secrets_example.h src\net\secrets.h
 
 6. 启动 `tools\doubao_relay\run.ps1`，再编译上传固件。
 
-`.env` 示例：
-
-```dotenv
-DOUBAO_API_KEY=
-DOUBAO_APP_ID=
-DOUBAO_ACCESS_KEY=
-DOUBAO_BIND_HOST=0.0.0.0
-DOUBAO_BIND_PORT=8765
-```
+`.env` 的空模板在 `tools/doubao_relay/.env.example`，复制后只在本机填写。
 
 实物接线保持不变：
 
