@@ -10,7 +10,16 @@ enum class XiaozhiPhase : uint8_t {
   Speaking
 };
 
+enum class XiaozhiRelayEvent : uint8_t {
+  TurnStarted,
+  AsrEnded,
+  AudioStarted,
+  TurnDone,
+  Failed
+};
+
 const char *xiaozhiPhaseName(XiaozhiPhase phase);
+XiaozhiPhase xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent event);
 bool xiaozhiShouldAutoTrigger(bool enabled, bool soundTriggered,
                               uint32_t nowMs, uint32_t lastTriggerMs,
                               uint32_t cooldownMs);

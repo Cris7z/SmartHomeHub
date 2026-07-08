@@ -21,6 +21,7 @@
 #include "net/ble_service.h"
 #include "net/pushplus.h"
 #include "net/time_weather.h"
+#include "net/voice_stream_client.h"
 #include "net/web_dashboard.h"
 
 void setup() {
@@ -41,6 +42,7 @@ void setup() {
   Serial.printf("I2S mic: %s\n", state.i2sOk ? "OK" : "not found");
   state.i2sSpeakerOk = setupI2sSpeaker();
   Serial.printf("I2S speaker: %s\n", state.i2sSpeakerOk ? "OK" : "not found");
+  setupVoiceStreamClient();
   setupXiaozhiAi();
 
   setupDisplay();
@@ -54,6 +56,8 @@ void setup() {
 }
 
 void loop() {
+  updateVoiceStreamClient();
+  updateStreamingSpeaker();
   updateSpeakerAudio();
   readEnvironment();
   readInputs();

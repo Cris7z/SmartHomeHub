@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "../app/hub_state.h"
+#include "../app/xiaozhi_core.h"
 #include "../board/config.h"
 #include "../board/hardware.h"
 #include "../io/voice_capture.h"
@@ -81,29 +82,43 @@ void handleRelayText(const char *text) {
   }
   switch (message.type) {
     case VoiceRelayMessageType::Ready:
+      state.doubaoRelayConnected = true;
       copyBounded(state.xiaozhiStatusText, sizeof(state.xiaozhiStatusText), "READY");
       break;
     case VoiceRelayMessageType::Phase:
       copyBounded(state.xiaozhiStatusText, sizeof(state.xiaozhiStatusText), message.text);
+      if (std::strcmp(message.text, "listening") == 0) {
+        state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::TurnStarted);
+      } else if (std::strcmp(message.text, "thinking") == 0) {
+        state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::AsrEnded);
+      } else if (std::strcmp(message.text, "speaking") == 0) {
+        state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::AudioStarted);
+      }
       break;
     case VoiceRelayMessageType::Asr:
       copyBounded(state.xiaozhiPromptText, sizeof(state.xiaozhiPromptText), message.text);
+      state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::AsrEnded);
       break;
     case VoiceRelayMessageType::Reply:
       copyBounded(state.xiaozhiReplyText, sizeof(state.xiaozhiReplyText), message.text);
       break;
     case VoiceRelayMessageType::Done:
       turnActive = false;
+      state.doubaoSessionActive = false;
+      state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::TurnDone);
       endVoiceCaptureTurn();
       endStreamingSpeaker();
       copyBounded(state.xiaozhiStatusText, sizeof(state.xiaozhiStatusText), "DONE");
       break;
     case VoiceRelayMessageType::Error:
       turnActive = false;
+      state.doubaoSessionActive = false;
+      state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::Failed);
       endVoiceCaptureTurn();
       endStreamingSpeaker();
       copyBounded(state.xiaozhiStatusText, sizeof(state.xiaozhiStatusText), "ERROR");
       copyBounded(state.xiaozhiReplyText, sizeof(state.xiaozhiReplyText), message.text);
+      copyBounded(state.xiaozhiErrorText, sizeof(state.xiaozhiErrorText), message.text);
       break;
   }
 }
@@ -112,13 +127,16 @@ void onVoiceWsEvent(WStype_t type, uint8_t *payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED:
       relayConnected = true;
+      state.doubaoRelayConnected = true;
       helloSent = false;
       sendHello();
       break;
     case WStype_DISCONNECTED:
       relayConnected = false;
+      state.doubaoRelayConnected = false;
       helloSent = false;
       turnActive = false;
+      state.doubaoSessionActive = false;
       endVoiceCaptureTurn();
       endStreamingSpeaker();
       break;
@@ -135,6 +153,7 @@ void onVoiceWsEvent(WStype_t type, uint8_t *payload, size_t length) {
     case WStype_BIN:
       if (payload && length > 0) {
         if (!streamingSpeakerActive()) {
+          state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::AudioStarted);
           beginStreamingSpeaker(VOICE_OUTPUT_SAMPLE_RATE);
         }
         queueStreamingSpeakerPcm(payload, length);
@@ -148,6 +167,7 @@ void onVoiceWsEvent(WStype_t type, uint8_t *payload, size_t length) {
 
 void setupVoiceStreamClient() {
   relayConfigured = parseRelayUrl(SMART_HOME_DOUBAO_RELAY_URL);
+  state.doubaoRelayConfigured = relayConfigured;
   setupVoiceCapture();
   if (!relayConfigured) {
     return;
@@ -187,6 +207,8 @@ bool startVoiceStreamTurn() {
   }
   beginVoiceCaptureTurn();
   turnActive = true;
+  state.doubaoSessionActive = true;
+  state.xiaozhiPhase = (uint8_t)xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent::TurnStarted);
   preRollSent = false;
   String body = startTurnJson();
   voiceWs.sendTXT(body);
@@ -200,6 +222,7 @@ void cancelVoiceStreamTurn(const char *reason) {
   }
   (void)reason;
   turnActive = false;
+  state.doubaoSessionActive = false;
   endVoiceCaptureTurn();
   endStreamingSpeaker();
 }
@@ -210,4 +233,8 @@ bool voiceStreamReady() {
 
 bool voiceStreamTurnActive() {
   return turnActive;
+}
+
+bool voiceStreamConfigured() {
+  return relayConfigured;
 }

@@ -577,7 +577,7 @@ void drawXiaozhiStatic() {
   drawCardFrame(CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H, "SPEAKER");
   drawRowLabel(ROW_1_Y, "PROMPT");
   drawRowLabel(ROW_1_Y + ROW_STEP, "REPLY");
-  drawRowLabel(ROW_1_Y + ROW_STEP * 2, "CLOUD");
+  drawRowLabel(ROW_1_Y + ROW_STEP * 2, "DOUBAO");
   drawRowLabel(ROW_1_Y + ROW_STEP * 3, "WAKE");
 }
 
@@ -593,8 +593,8 @@ void drawXiaozhiDynamic() {
   drawCachedRowValue(xiaozhiCache[SlotRow1], ROW_1_Y, state.xiaozhiPromptText, ILI9341_LIGHTGREY);
   drawCachedRowValue(xiaozhiCache[SlotRow2], ROW_1_Y + ROW_STEP, state.xiaozhiReplyText, ILI9341_WHITE);
   drawCachedRowValue(xiaozhiCache[SlotRow3], ROW_1_Y + ROW_STEP * 2,
-                     state.xiaozhiCloudConfigured ? "CONFIGURED" : "LOCAL DEMO",
-                     state.xiaozhiCloudConfigured ? ILI9341_CYAN : ILI9341_ORANGE);
+                     state.doubaoRelayConnected ? "DOUBAO READY" : "DOUBAO OFFLINE",
+                     state.doubaoRelayConnected ? ILI9341_CYAN : ILI9341_ORANGE);
   drawCachedRowValue(xiaozhiCache[SlotRow4], ROW_1_Y + ROW_STEP * 3,
                      state.xiaozhiAutoWake ? "MIC AUTO" : "MANUAL",
                      state.xiaozhiAutoWake ? ILI9341_GREEN : ILI9341_DARKGREY);

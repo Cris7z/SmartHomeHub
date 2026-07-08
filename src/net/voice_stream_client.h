@@ -6,3 +6,4 @@ bool startVoiceStreamTurn();
 void cancelVoiceStreamTurn(const char *reason);
 bool voiceStreamReady();
 bool voiceStreamTurnActive();
+bool voiceStreamConfigured();

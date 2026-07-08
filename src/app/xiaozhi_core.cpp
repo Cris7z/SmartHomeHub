@@ -16,6 +16,21 @@ const char *xiaozhiPhaseName(XiaozhiPhase phase) {
   }
 }
 
+XiaozhiPhase xiaozhiPhaseForRelayEvent(XiaozhiRelayEvent event) {
+  switch (event) {
+    case XiaozhiRelayEvent::TurnStarted:
+      return XiaozhiPhase::Listening;
+    case XiaozhiRelayEvent::AsrEnded:
+      return XiaozhiPhase::Thinking;
+    case XiaozhiRelayEvent::AudioStarted:
+      return XiaozhiPhase::Speaking;
+    case XiaozhiRelayEvent::TurnDone:
+    case XiaozhiRelayEvent::Failed:
+    default:
+      return XiaozhiPhase::Idle;
+  }
+}
+
 bool xiaozhiShouldAutoTrigger(bool enabled, bool soundTriggered,
                               uint32_t nowMs, uint32_t lastTriggerMs,
                               uint32_t cooldownMs) {

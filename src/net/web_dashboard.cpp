@@ -57,7 +57,7 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 </div>
 <div class="voicebar">
 <input id="xzask" placeholder="Ask XiaoZhi" maxlength="80">
-<button class="secondary" id="talkBtn" onclick="listenXiaoZhi()">Talk</button>
+<button class="secondary" id="talkBtn" onclick="listenXiaoZhi()">Mic</button>
 <button onclick="askXiaoZhi()">Ask</button>
 </div>
 <section class="grid">
@@ -82,7 +82,6 @@ async function sendXiaoZhi(prompt){
  if(prompt){url+='&prompt='+encodeURIComponent(prompt);}
  await fetch(url);
  await refresh();
- waitXiaoZhiReply();
 }
 async function askXiaoZhi(){
  const input=document.getElementById('xzask');
@@ -90,45 +89,8 @@ async function askXiaoZhi(){
  if(text){xzprompt.textContent=text;}
  await sendXiaoZhi(text);
 }
-function listenXiaoZhi(){
- const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
- const button=document.getElementById('talkBtn');
- const input=document.getElementById('xzask');
- if(!Speech){button.textContent='Type';input.focus();return;}
- const rec=new Speech();
- rec.lang='zh-CN';
- rec.interimResults=false;
- rec.maxAlternatives=1;
- button.textContent='...';
- rec.onresult=function(e){
-  const text=e.results[0][0].transcript.trim();
-  input.value=text;
-  xzprompt.textContent=text;
-  sendXiaoZhi(text);
- };
- rec.onerror=function(){button.textContent='Talk';input.focus();};
- rec.onend=function(){if(button.textContent==='...')button.textContent='Talk';};
- rec.start();
-}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-function speakXiaoZhiReply(text){
- if(!text||!('speechSynthesis' in window))return;
- const u=new SpeechSynthesisUtterance(text);
- u.lang='zh-CN';
- u.rate=1.08;
- speechSynthesis.cancel();
- speechSynthesis.speak(u);
-}
-async function waitXiaoZhiReply(){
- for(let i=0;i<18;i++){
-  await sleep(1000);
-  const s=await refresh();
-  const reply=s.xiaozhiReply||'';
-  if(s.xiaozhiPhase==='IDLE'&&reply&&reply!=='Listening...'&&reply!=='Cloud endpoint ready'&&reply!=='Local demo ready'){
-   speakXiaoZhiReply(reply);
-   return;
-  }
- }
+async function listenXiaoZhi(){
+ await sendXiaoZhi('');
 }
 function yn(v){return v?'ON':'OFF'}
 async function refresh(){
@@ -203,6 +165,10 @@ String stateJson() {
   json += "\"xiaozhiPrompt\":" + jsonString(state.xiaozhiPromptText) + ",";
   json += "\"xiaozhiReply\":" + jsonString(state.xiaozhiReplyText) + ",";
   json += "\"xiaozhiCloudConfigured\":" + boolJson(state.xiaozhiCloudConfigured) + ",";
+  json += "\"doubaoRelayConfigured\":" + boolJson(state.doubaoRelayConfigured) + ",";
+  json += "\"doubaoRelayConnected\":" + boolJson(state.doubaoRelayConnected) + ",";
+  json += "\"doubaoSessionActive\":" + boolJson(state.doubaoSessionActive) + ",";
+  json += "\"xiaozhiError\":" + jsonString(state.xiaozhiErrorText) + ",";
   json += "\"speakerOk\":" + boolJson(state.i2sSpeakerOk) + ",";
   json += "\"speakerPlaying\":" + boolJson(state.speakerPlaying) + ",";
   json += "\"acCooling\":" + boolJson(state.acCooling) + ",";

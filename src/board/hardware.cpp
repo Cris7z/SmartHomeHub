@@ -209,7 +209,6 @@ bool queueSpeakerPcmClip(const int16_t *samples, size_t sampleCount) {
 
 void updateSpeakerAudio() {
   if (streamingSpeakerActive()) {
-    updateStreamingSpeaker();
     return;
   }
 

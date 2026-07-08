@@ -35,6 +35,9 @@ struct HubState {
   bool xiaozhiEnabled = true;
   bool xiaozhiAutoWake = true;
   bool xiaozhiCloudConfigured = false;
+  bool doubaoRelayConfigured = false;
+  bool doubaoRelayConnected = false;
+  bool doubaoSessionActive = false;
   uint8_t displayPage = 0;
   uint8_t aiRiskScore = 0;
   uint8_t xiaozhiPhase = 0;
@@ -58,6 +61,7 @@ struct HubState {
   char xiaozhiStatusText[16] = "IDLE";
   char xiaozhiPromptText[160] = "Say XiaoZhi";
   char xiaozhiReplyText[128] = "Local demo ready";
+  char xiaozhiErrorText[128] = "";
   char eventLog[HUB_EVENT_LOG_COUNT][HUB_EVENT_TEXT_LEN] = {};
   uint8_t eventLogHead = 0;
   uint8_t eventLogCount = 0;
