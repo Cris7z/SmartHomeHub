@@ -10,6 +10,7 @@
 #include "../board/hardware.h"
 #include "../board/xiaozhi_voice_clip.h"
 #include "../net/secrets_config.h"
+#include "../net/xiaozhi_cloud.h"
 
 namespace {
 void setXiaozhiPhase(XiaozhiPhase phase, uint32_t nowMs, uint32_t holdMs) {
@@ -26,14 +27,29 @@ void buildLocalPrompt() {
 }
 
 bool hasXiaozhiCloudConfig() {
-  return std::strlen(SMART_HOME_XIAOZHI_ENDPOINT) > 0;
+  return isXiaozhiCloudConfigured();
 }
 
 void startThinking(uint32_t nowMs) {
   buildLocalPrompt();
   setXiaozhiPhase(XiaozhiPhase::Thinking, nowMs, XIAOZHI_THINK_MS);
   logHubEvent("XIAOZHI think");
-  Serial.printf("[XIAOZHI] prompt='%s'\n", state.xiaozhiPromptText);
+  bool cloudOk = false;
+  if (state.xiaozhiCloudConfigured) {
+    cloudOk = requestXiaozhiCloudReply(state.xiaozhiReplyText,
+                                       sizeof(state.xiaozhiReplyText),
+                                       state.xiaozhiPromptText,
+                                       state.tempC, state.humidity,
+                                       state.presence, state.securityArmed,
+                                       state.weatherText, state.timeText);
+  }
+  if (!cloudOk) {
+    formatXiaozhiLocalReply(state.xiaozhiReplyText, sizeof(state.xiaozhiReplyText),
+                            state.tempC, state.humidity,
+                            state.presence, state.securityArmed);
+  }
+  Serial.printf("[XIAOZHI] prompt='%s' replySource=%s\n",
+                state.xiaozhiPromptText, cloudOk ? "CLOUD" : "LOCAL");
 }
 
 void startSpeaking(uint32_t nowMs) {
