@@ -41,9 +41,12 @@ constexpr uint32_t IR_RX_HOLD_MS = 1000;
 constexpr int MIC_SAMPLE_RATE = 16000;
 constexpr int MIC_SAMPLE_SHIFT = 8;
 constexpr int MIC_RMS_TRIGGER = 65000;
+constexpr int MIC_RMS_ADAPT_MARGIN = 35000;
+constexpr int MIC_RMS_ADAPT_MULTIPLIER_PERCENT = 240;
 constexpr bool MIC_DEBUG = true;
 
 constexpr float TEMP_COOLING_THRESHOLD_C = 28.0;
 constexpr uint32_t EMPTY_TO_SECURITY_MS = 10000;
 constexpr uint32_t ALARM_HOLD_MS = 5000;
 constexpr uint32_t AC_COMMAND_GAP_MS = 15000;
+constexpr uint32_t PHONE_ALERT_COOLDOWN_MS = 60000;

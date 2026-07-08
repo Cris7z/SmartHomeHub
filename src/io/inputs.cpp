@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "../app/controls.h"
+#include "../app/event_log.h"
 #include "../app/hub_state.h"
 #include "../board/config.h"
 #include "sensors.h"
@@ -25,6 +27,8 @@ int lastButtonLevel[BUTTON_COUNT] = {
 };
 uint32_t lastButtonChangeMs[BUTTON_COUNT] = {0, 0, 0, 0, 0};
 volatile bool irPulseSeen = false;
+bool presenceKnown = false;
+bool lastPresence = false;
 
 void IRAM_ATTR handleIrPulse() {
   irPulseSeen = true;
@@ -33,32 +37,19 @@ void IRAM_ATTR handleIrPulse() {
 void handleButtonPress(int index) {
   switch (index) {
     case 0:
-      state.forceSecurity = !state.forceSecurity;
-      Serial.printf("[KEY1] Force security: %s\n", state.forceSecurity ? "ON" : "OFF");
+      applyHubCommand(HubCommand::ToggleSecurity, "KEY1");
       break;
     case 1:
-      state.manualLamp = !state.manualLamp;
-      Serial.printf("[KEY2] Manual lamp: %s\n", state.manualLamp ? "ON" : "OFF");
+      applyHubCommand(HubCommand::ToggleLamp, "KEY2");
       break;
     case 2:
-      state.manualAc = !state.manualAc;
-      state.irTestActive = true;
-      state.irTestUntilMs = millis() + IR_TEST_WINDOW_MS;
-      state.lastIrTestBurstMs = 0;
-      if (state.manualAc || state.tempC >= TEMP_COOLING_THRESHOLD_C) {
-        state.acCommandRequested = true;
-      }
-      Serial.printf("[KEY3] Manual AC: %s\n", state.manualAc ? "ON" : "OFF");
-      Serial.printf("[IR] Diagnostic test started: %lu ms\n", IR_TEST_WINDOW_MS);
+      applyHubCommand(HubCommand::ToggleAc, "KEY3");
       break;
     case 3:
-      state.buzzerTestUntilMs = millis() + 300;
-      Serial.println("[KEY4] Buzzer test");
+      applyHubCommand(HubCommand::NextDisplayPage, "KEY4");
       break;
     case 4:
-      state.alarm = false;
-      state.forceSecurity = false;
-      Serial.println("[KEY5] Alarm/security cleared");
+      applyHubCommand(HubCommand::ClearAlarmSecurity, "KEY5");
       break;
   }
 }
@@ -76,6 +67,13 @@ void setupInputs() {
 void readInputs() {
   const uint32_t now = millis();
   state.presence = digitalRead(PIN_PRESENCE_OUT) == PRESENCE_ACTIVE_LEVEL;
+  if (!presenceKnown) {
+    presenceKnown = true;
+    lastPresence = state.presence;
+  } else if (state.presence != lastPresence) {
+    lastPresence = state.presence;
+    logHubEvent(state.presence ? "ROOM occupied" : "ROOM empty");
+  }
   const bool irLevelActive = digitalRead(PIN_IR_RX) == IR_RX_ACTIVE_LEVEL;
   bool irPulseCaptured = false;
 

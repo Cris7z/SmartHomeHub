@@ -6,3 +6,4 @@ compile_commands.json
 .vscode/launch.json
 .vscode/ipch/
 cad_mcp.log
+src/net/secrets.h

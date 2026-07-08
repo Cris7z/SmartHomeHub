@@ -16,6 +16,28 @@ uint32_t lastMicDebugMs = 0;
 int32_t abs32(int32_t value) {
   return value < 0 ? -value : value;
 }
+
+int32_t updateAdaptiveMicThreshold(int32_t level) {
+  if (level <= 0) {
+    state.micThreshold = MIC_RMS_TRIGGER;
+    return state.micThreshold;
+  }
+
+  if (!state.adaptiveMicReady) {
+    state.adaptiveMicReady = true;
+    state.micBaseline = level;
+  }
+
+  const int32_t currentThreshold = state.micThreshold > 0 ? state.micThreshold : MIC_RMS_TRIGGER;
+  if (!state.alarm && level < currentThreshold) {
+    state.micBaseline = (state.micBaseline * 95 + level * 5) / 100;
+  }
+
+  const int32_t adaptiveThreshold =
+      state.micBaseline * MIC_RMS_ADAPT_MULTIPLIER_PERCENT / 100 + MIC_RMS_ADAPT_MARGIN;
+  state.micThreshold = max((int32_t)MIC_RMS_TRIGGER, adaptiveThreshold);
+  return state.micThreshold;
+}
 }
 
 void readEnvironment() {
@@ -74,11 +96,13 @@ void readMicrophone() {
   }
 
   state.micLevel = sqrt((double)sumSquares / count);
-  state.soundTriggered = state.micLevel > MIC_RMS_TRIGGER;
+  const int32_t threshold = updateAdaptiveMicThreshold(state.micLevel);
+  state.soundTriggered = state.micLevel > threshold;
   if (MIC_DEBUG && millis() - lastMicDebugMs > 2000) {
     lastMicDebugMs = millis();
-    Serial.printf("[MIC] read err=%d bytes=%u samples=%d nonzero=%d rawPeak=%ld peak=%ld rms=%ld\n",
+    Serial.printf("[MIC] read err=%d bytes=%u samples=%d nonzero=%d rawPeak=%ld peak=%ld rms=%ld base=%ld thr=%ld\n",
                   (int)result, (unsigned)bytesRead, count, nonzeroCount,
-                  (long)rawPeak, (long)peak, (long)state.micLevel);
+                  (long)rawPeak, (long)peak, (long)state.micLevel,
+                  (long)state.micBaseline, (long)threshold);
   }
 }

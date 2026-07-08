@@ -9,6 +9,7 @@
 #include <Wire.h>
 
 #include "app/automation.h"
+#include "app/ai_guard.h"
 #include "app/diagnostics.h"
 #include "app/display.h"
 #include "app/hub_state.h"
@@ -16,6 +17,10 @@
 #include "board/hardware.h"
 #include "io/inputs.h"
 #include "io/sensors.h"
+#include "net/ble_service.h"
+#include "net/pushplus.h"
+#include "net/time_weather.h"
+#include "net/web_dashboard.h"
 
 void setup() {
   Serial.begin(115200);
@@ -34,6 +39,10 @@ void setup() {
 
   setupDisplay();
   setupStatusLamp();
+  setupPhoneAlert();
+  setupTimeWeather();
+  setupWebDashboard();
+  setupBleService();
 
   state.lastSeenMs = millis();
 }
@@ -42,6 +51,11 @@ void loop() {
   readEnvironment();
   readInputs();
   updateAutomation();
+  updateAiGuard();
+  updatePhoneAlert();
+  updateTimeWeather();
+  updateWebDashboard();
+  updateBleService();
   drawUi();
   printSerialStatus();
 }
