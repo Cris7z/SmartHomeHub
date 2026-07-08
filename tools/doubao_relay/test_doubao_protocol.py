@@ -59,6 +59,20 @@ class DoubaoProtocolTest(unittest.TestCase):
             Frame(AUDIO_REQUEST, 200, "session-1", pcm, "raw"),
         )
 
+    def test_end_asr_carries_session_id(self):
+        encoded = encode_event(
+            message_type=FULL_CLIENT_REQUEST,
+            event=400,
+            session_id="session-1",
+            payload=b"{}",
+            serialization="json",
+        )
+
+        self.assertEqual(
+            decode_frame(encoded),
+            Frame(FULL_CLIENT_REQUEST, 400, "session-1", b"{}", "json"),
+        )
+
     def test_start_session_matches_exact_fixture(self):
         encoded = encode_event(
             message_type=FULL_CLIENT_REQUEST,

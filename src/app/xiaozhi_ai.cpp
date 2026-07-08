@@ -26,6 +26,10 @@ bool hasText(const char *text) {
   return text && text[0] != '\0';
 }
 
+bool lastAutoSoundTriggered = false;
+bool autoWakeArmed = false;
+uint32_t autoWakeQuietSinceMs = 0;
+
 bool startXiaozhiRelayTurn(const char *source, uint32_t nowMs) {
   if (!voiceStreamReady()) {
     strlcpy(state.xiaozhiErrorText, "Doubao relay offline", sizeof(state.xiaozhiErrorText));
@@ -94,18 +98,42 @@ void updateXiaozhiAi() {
   state.doubaoRelayConfigured = voiceStreamConfigured();
   state.doubaoRelayConnected = voiceStreamReady();
   state.doubaoSessionActive = voiceStreamTurnActive();
+  const bool autoSoundRising = state.soundTriggered && !lastAutoSoundTriggered;
+  lastAutoSoundTriggered = state.soundTriggered;
 
   const XiaozhiPhase phase = (XiaozhiPhase)state.xiaozhiPhase;
   const bool micSuppressed =
       xiaozhiMicSuppressed(state.speakerPlaying, now, state.xiaozhiMicMutedUntilMs);
+  const bool autoWakeReady =
+      phase == XiaozhiPhase::Idle &&
+      state.doubaoRelayConfigured &&
+      state.doubaoRelayConnected &&
+      state.wifiStaConnected &&
+      !micSuppressed;
+  if (!autoWakeReady) {
+    autoWakeArmed = false;
+    autoWakeQuietSinceMs = 0;
+  } else if (!state.soundTriggered) {
+    if (autoWakeQuietSinceMs == 0) {
+      autoWakeQuietSinceMs = now;
+    }
+    if (now - autoWakeQuietSinceMs >= XIAOZHI_AUTO_REARM_QUIET_MS) {
+      autoWakeArmed = true;
+    }
+  } else {
+    autoWakeQuietSinceMs = 0;
+  }
+
   if (phase == XiaozhiPhase::Idle &&
       state.doubaoRelayConfigured &&
       state.doubaoRelayConnected &&
       state.wifiStaConnected &&
-      xiaozhiShouldAutoTrigger(state.xiaozhiAutoWake, state.soundTriggered,
+      autoWakeArmed &&
+      xiaozhiShouldAutoTrigger(state.xiaozhiAutoWake, autoSoundRising,
                                micSuppressed,
                                now, state.xiaozhiLastTriggerMs,
                                XIAOZHI_AUTO_WAKE_COOLDOWN_MS)) {
+    autoWakeArmed = false;
     startXiaozhiRelayTurn("AUTO mic", now);
     return;
   }

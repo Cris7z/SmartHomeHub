@@ -90,7 +90,7 @@ bool setupI2sMic() {
   i2sConfig.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
   i2sConfig.communication_format = I2S_COMM_FORMAT_STAND_I2S;
   i2sConfig.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;
-  i2sConfig.dma_buf_count = 4;
+  i2sConfig.dma_buf_count = 8;
   i2sConfig.dma_buf_len = 128;
   i2sConfig.use_apll = false;
   i2sConfig.tx_desc_auto_clear = false;
@@ -122,7 +122,7 @@ bool setupI2sSpeaker() {
   i2sConfig.communication_format = I2S_COMM_FORMAT_STAND_I2S;
   i2sConfig.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1;
   i2sConfig.dma_buf_count = 4;
-  i2sConfig.dma_buf_len = 256;
+  i2sConfig.dma_buf_len = 512;
   i2sConfig.use_apll = false;
   i2sConfig.tx_desc_auto_clear = true;
   i2sConfig.fixed_mclk = 0;
@@ -144,7 +144,7 @@ bool setupI2sSpeaker() {
   }
   i2s_zero_dma_buffer(I2S_NUM_1);
   speakerInstalled = true;
-  setupStreamingSpeaker(VOICE_OUTPUT_SAMPLE_RATE * 2);
+  setupStreamingSpeaker(VOICE_OUTPUT_SAMPLE_RATE * VOICE_OUTPUT_BUFFER_SECONDS);
   return true;
 }
 

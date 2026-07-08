@@ -16,6 +16,11 @@ class BoardProtocolTest(unittest.TestCase):
         with self.assertRaisesRegex(BoardMessageError, "type"):
             parse_control_message('{"type":"execute_shell"}')
 
+    def test_end_audio_control_is_allowed(self):
+        message = parse_control_message('{"type":"end_audio","protocol":1}')
+
+        self.assertEqual(message["type"], "end_audio")
+
     def test_rejects_unknown_top_level_fields(self):
         with self.assertRaisesRegex(BoardMessageError, "field"):
             parse_control_message('{"type":"hello","protocol":1,"extra":true}')

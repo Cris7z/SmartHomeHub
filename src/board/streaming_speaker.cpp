@@ -13,8 +13,21 @@ int16_t *streamingStorage = nullptr;
 size_t streamingCapacity = 0;
 PcmRingBuffer streamingQueue;
 bool streamingActive = false;
+bool streamingFinishing = false;
+uint32_t lastStreamingWriteMs = 0;
 SpeakerToneFrame streamingFrames[SPEAKER_TONE_CHUNK_FRAMES];
 int16_t streamingMono[SPEAKER_TONE_CHUNK_FRAMES];
+
+int16_t scaleVoiceSample(int16_t sample) {
+  int32_t scaled = (int32_t)sample * VOICE_OUTPUT_GAIN_PERCENT / 100;
+  if (scaled > INT16_MAX) {
+    return INT16_MAX;
+  }
+  if (scaled < INT16_MIN) {
+    return INT16_MIN;
+  }
+  return (int16_t)scaled;
+}
 }
 
 bool setupStreamingSpeaker(size_t sampleCapacity) {
@@ -57,6 +70,8 @@ bool beginStreamingSpeaker(uint32_t sampleRate) {
   }
   i2s_zero_dma_buffer(I2S_NUM_1);
   streamingActive = true;
+  streamingFinishing = false;
+  lastStreamingWriteMs = millis();
   return true;
 }
 
@@ -79,27 +94,54 @@ size_t queueStreamingSpeakerPcm(const uint8_t *littleEndianBytes, size_t byteCou
 }
 
 void updateStreamingSpeaker() {
-  if (!streamingActive || streamingQueue.empty()) {
+  if (!streamingActive) {
+    return;
+  }
+  if (streamingQueue.empty()) {
+    if (streamingFinishing && millis() - lastStreamingWriteMs >= STREAMING_SPEAKER_DRAIN_MS) {
+      endStreamingSpeaker();
+    }
     return;
   }
 
-  const size_t samples = streamingQueue.pop(streamingMono, SPEAKER_TONE_CHUNK_FRAMES);
-  for (size_t i = 0; i < samples; ++i) {
-    streamingFrames[i].left = streamingMono[i];
-    streamingFrames[i].right = streamingMono[i];
-  }
+  size_t framesQueued = 0;
+  while (framesQueued < STREAMING_SPEAKER_WRITE_BUDGET_FRAMES && !streamingQueue.empty()) {
+    const size_t samples = streamingQueue.pop(streamingMono, SPEAKER_TONE_CHUNK_FRAMES);
+    if (samples == 0) {
+      break;
+    }
+    for (size_t i = 0; i < samples; ++i) {
+      const int16_t sample = scaleVoiceSample(streamingMono[i]);
+      streamingFrames[i].left = sample;
+      streamingFrames[i].right = sample;
+    }
 
-  size_t bytesWritten = 0;
-  i2s_write(I2S_NUM_1, streamingFrames, samples * sizeof(streamingFrames[0]),
-            &bytesWritten, pdMS_TO_TICKS(2));
+    size_t bytesWritten = 0;
+    i2s_write(I2S_NUM_1, streamingFrames, samples * sizeof(streamingFrames[0]),
+              &bytesWritten, pdMS_TO_TICKS(2));
+    if (bytesWritten == 0) {
+      break;
+    }
+    framesQueued += samples;
+    lastStreamingWriteMs = millis();
+  }
+}
+
+void finishStreamingSpeaker() {
+  if (streamingActive) {
+    streamingFinishing = true;
+  }
 }
 
 void endStreamingSpeaker() {
   if (!streamingActive) {
+    streamingFinishing = false;
     return;
   }
 
   streamingActive = false;
+  streamingFinishing = false;
+  lastStreamingWriteMs = 0;
   streamingQueue.clear();
   i2s_set_clk(I2S_NUM_1, SPEAKER_SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
   i2s_zero_dma_buffer(I2S_NUM_1);

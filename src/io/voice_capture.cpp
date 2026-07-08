@@ -74,7 +74,7 @@ bool pollVoiceCapturePacket(int16_t *out, size_t outCapacity, size_t &sampleCoun
     return false;
   }
 
-  const MicAnalysis analysis = analyzeI2sMicSamples(raw, (int)rawCount, VOICE_PCM_RIGHT_SHIFT);
+  const MicAnalysis analysis = analyzeI2sMicSamples(raw, (int)rawCount, MIC_SAMPLE_SHIFT);
   smoothedVoiceMicLevel = analysis.valid
       ? smoothMicLevel(smoothedVoiceMicLevel, analysis.rms, MIC_SMOOTH_WEIGHT_PERCENT)
       : 0;

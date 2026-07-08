@@ -42,6 +42,7 @@ _SESSION_EVENTS = frozenset(
         351,
         352,
         359,
+        400,
         450,
         451,
         459,

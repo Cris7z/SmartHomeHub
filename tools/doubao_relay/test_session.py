@@ -17,6 +17,16 @@ class RealtimeSessionTest(unittest.TestCase):
         self.assertEqual(session.on_event(359, b"{}"), [{"type": "done"}])
         self.assertIs(session.phase, SessionPhase.COMPLETE)
 
+    def test_no_content_asr_ends_turn_cleanly(self):
+        session = RealtimeSession("session-1")
+        session.on_event(150, b'{"dialog_id":"dialog-1"}')
+
+        self.assertEqual(
+            session.on_event(459, b'{"no_content":true}'),
+            [{"type": "reply", "text": "没有听到有效人声"}, {"type": "done"}],
+        )
+        self.assertIs(session.phase, SessionPhase.COMPLETE)
+
     def test_audio_before_session_started_is_rejected(self):
         session = RealtimeSession("session-1")
 
@@ -30,11 +40,13 @@ class RealtimeSessionTest(unittest.TestCase):
         self.assertEqual(body["asr"]["audio_info"], {"format": "pcm", "sample_rate": 16000, "channel": 1})
         self.assertEqual(body["asr"]["extra"]["end_smooth_window_ms"], 900)
         self.assertEqual(body["dialog"]["extra"]["model"], "1.2.1.1")
+        self.assertEqual(body["dialog"]["extra"]["input_mod"], "push_to_talk")
         self.assertIn("27.0", body["dialog"]["system_role"])
         self.assertIn("65", body["dialog"]["system_role"])
         self.assertEqual(body["tts"]["speaker"], "zh_female_vv_jupiter_bigtts")
         self.assertEqual(body["tts"]["audio_config"]["format"], "pcm_s16le")
         self.assertEqual(body["tts"]["audio_config"]["sample_rate"], 24000)
+        self.assertEqual(body["tts"]["audio_config"]["speech_rate"], 15)
         self.assertIsInstance(body["tts"]["extra"], dict)
 
     def test_build_headers_prefers_single_api_key(self):

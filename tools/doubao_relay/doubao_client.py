@@ -58,7 +58,7 @@ class RealtimeSession:
                 "bot_name": "小智",
                 "system_role": role,
                 "speaking_style": "语速稍快，语气自然亲切，回答不超过三句话。",
-                "extra": {"model": "1.2.1.1"},
+                "extra": {"model": "1.2.1.1", "input_mod": "push_to_talk"},
             },
             "tts": {
                 "speaker": "zh_female_vv_jupiter_bigtts",
@@ -66,7 +66,7 @@ class RealtimeSession:
                     "channel": 1,
                     "format": "pcm_s16le",
                     "sample_rate": 24000,
-                    "speech_rate": 5,
+                    "speech_rate": 15,
                 },
                 "extra": {},
             },
@@ -90,6 +90,9 @@ class RealtimeSession:
                 return [{"type": "asr", "text": self.last_asr}]
             return []
         if event == 459:
+            if body.get("no_content") is True:
+                self.phase = SessionPhase.COMPLETE
+                return [{"type": "reply", "text": "没有听到有效人声"}, {"type": "done"}]
             self.phase = SessionPhase.THINKING
             return [{"type": "phase", "value": "thinking"}]
         if event == 350:

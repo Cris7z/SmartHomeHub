@@ -211,6 +211,8 @@ copy src\net\secrets_example.h src\net\secrets.h
 
 `.env` 的空模板在 `tools/doubao_relay/.env.example`，复制后只在本机填写。
 
+队友 clone 后还需要按 [CONTRIBUTING.md](CONTRIBUTING.md) 的“队友克隆规则”创建自己的 `src/net/secrets.h` 和 `tools/doubao_relay/.env`。这些本地密钥、Wi-Fi 和 relay IP 不提交到 Git。
+
 实物接线保持不变：
 
 ```text

@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import json
 import os
+import wave
 import uuid
 from pathlib import Path
 from typing import Mapping
@@ -23,6 +24,19 @@ from tools.doubao_relay.doubao_protocol import (
 REALTIME_URL = "wss://openspeech.bytedance.com/api/v3/realtime/dialogue"
 DEFAULT_BIND_HOST = "0.0.0.0"
 DEFAULT_BIND_PORT = 8765
+BOARD_AUDIO_CHUNK_BYTES = 960
+
+
+def board_server_options() -> dict:
+    return {"max_size": MAX_FRAME_BYTES, "ping_interval": None}
+
+
+def iter_board_audio_chunks(payload: bytes, chunk_bytes: int = BOARD_AUDIO_CHUNK_BYTES):
+    if chunk_bytes < 2:
+        raise ValueError("chunk size must fit at least one int16 sample")
+    chunk_bytes -= chunk_bytes % 2
+    for offset in range(0, len(payload), chunk_bytes):
+        yield payload[offset : offset + chunk_bytes]
 
 
 def load_env(path: Path | None = None) -> dict[str, str]:
@@ -41,6 +55,10 @@ def load_env(path: Path | None = None) -> dict[str, str]:
 
 def json_bytes(payload: dict) -> str:
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def log(message: str) -> None:
+    print(f"[relay] {message}", flush=True)
 
 
 async def probe(env: Mapping[str, str]) -> str:
@@ -101,6 +119,12 @@ class DoubaoTurn:
         self._writer_task: asyncio.Task | None = None
         self._reader_task: asyncio.Task | None = None
         self._connection_started = asyncio.Event()
+        self.audio_frames = 0
+        self.audio_bytes = 0
+        self.audio_peak = 0
+        self.audio_capture = bytearray()
+        self.tts_audio_chunks = 0
+        self.tts_audio_bytes = 0
 
     async def start(self) -> None:
         from websockets.asyncio.client import connect
@@ -130,9 +154,20 @@ class DoubaoTurn:
                 serialization="json",
             )
         )
+        log(f"start_session id={self.session.session_id}")
 
     async def send_audio(self, pcm: bytes) -> None:
         self.session.on_audio(pcm)
+        self.audio_frames += 1
+        self.audio_bytes += len(pcm)
+        if len(self.audio_capture) < 512000:
+            remaining = 512000 - len(self.audio_capture)
+            self.audio_capture.extend(pcm[:remaining])
+        for i in range(0, len(pcm) - 1, 2):
+            sample = int.from_bytes(pcm[i : i + 2], "little", signed=True)
+            self.audio_peak = max(self.audio_peak, abs(sample))
+        if self.audio_frames <= 3 or self.audio_frames % 50 == 0:
+            log(f"audio frames={self.audio_frames} bytes={self.audio_bytes} peak={self.audio_peak}")
         await self._write_queue.put(
             encode_event(
                 message_type=AUDIO_REQUEST,
@@ -142,6 +177,35 @@ class DoubaoTurn:
                 serialization="raw",
             )
         )
+
+    async def end_audio(self) -> None:
+        if self.session.phase is not SessionPhase.STREAMING:
+            log(f"end_audio ignored phase={self.session.phase.name}")
+            return
+        self.session.phase = SessionPhase.THINKING
+        log(f"end_audio frames={self.audio_frames} bytes={self.audio_bytes} peak={self.audio_peak}")
+        self._write_debug_wav()
+        await self._write_queue.put(
+            encode_event(
+                message_type=FULL_CLIENT_REQUEST,
+                event=400,
+                session_id=self.session.session_id,
+                payload=b"{}",
+                serialization="json",
+            )
+        )
+
+    def _write_debug_wav(self) -> None:
+        if not self.audio_capture:
+            return
+        path = Path(".pio") / "logs" / "last_turn.wav"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(path), "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(16000)
+            wav.writeframes(bytes(self.audio_capture))
+        log(f"wrote_audio path={path} bytes={len(self.audio_capture)}")
 
     async def close(self) -> None:
         await self._write_queue.put(None)
@@ -165,16 +229,31 @@ class DoubaoTurn:
                 continue
             frame = decode_frame(raw)
             if frame.message_type == ERROR_RESPONSE:
+                log(f"doubao_error code={frame.event} payload={frame.payload[:160]!r}")
                 for event in self.session.on_event(599, frame.payload):
                     await self.board.send(json_bytes(event))
                 continue
             if frame.event == 50:
+                log("connection_started")
                 self._connection_started.set()
                 continue
             if frame.message_type == AUDIO_RESPONSE:
-                await self.board.send(frame.payload)
+                if self.session.phase is not SessionPhase.SPEAKING:
+                    log("audio_response_begin")
+                    self.session.phase = SessionPhase.SPEAKING
+                    await self.board.send(json_bytes({"type": "phase", "value": "speaking"}))
+                for chunk in iter_board_audio_chunks(frame.payload):
+                    await self.board.send(chunk)
+                    self.tts_audio_chunks += 1
+                    self.tts_audio_bytes += len(chunk)
+                    if self.tts_audio_chunks <= 3 or self.tts_audio_chunks % 50 == 0:
+                        log(
+                            f"tts_audio chunks={self.tts_audio_chunks} "
+                            f"bytes={self.tts_audio_bytes}"
+                        )
                 continue
             if frame.message_type == FULL_SERVER_RESPONSE:
+                log(f"doubao_event event={frame.event} payload={frame.payload[:160]!r}")
                 for event in self.session.on_event(frame.event, frame.payload):
                     await self.board.send(json_bytes(event))
 
@@ -191,6 +270,7 @@ async def handle_board(websocket, env: Mapping[str, str]) -> None:
 
     turn: DoubaoTurn | None = None
     await websocket.send(json_bytes({"type": "ready", "protocol": PROTOCOL_VERSION}))
+    log("board_connected")
     try:
         async for message in websocket:
             if isinstance(message, str):
@@ -202,9 +282,15 @@ async def handle_board(websocket, env: Mapping[str, str]) -> None:
                         if turn:
                             await turn.close()
                         turn = DoubaoTurn(websocket, env, control["home"])
+                        log("board_start_turn")
                         await websocket.send(json_bytes({"type": "phase", "value": "connecting"}))
                         await turn.start()
+                    elif control["type"] == "end_audio" and turn:
+                        log("board_end_audio")
+                        await turn.end_audio()
+                        await websocket.send(json_bytes({"type": "phase", "value": "thinking"}))
                     elif control["type"] == "cancel" and turn:
+                        log("board_cancel")
                         await turn.close()
                         turn = None
                         await websocket.send(json_bytes({"type": "done"}))
@@ -212,6 +298,7 @@ async def handle_board(websocket, env: Mapping[str, str]) -> None:
                     await websocket.send(json_bytes({"type": "error", "message": str(exc)[:191]}))
             elif isinstance(message, (bytes, bytearray)):
                 if not turn or turn.session.phase is not SessionPhase.STREAMING:
+                    log(f"audio_rejected bytes={len(message)} phase={turn.session.phase.name if turn else 'NONE'}")
                     await websocket.send(json_bytes({"type": "error", "message": "not listening"}))
                     continue
                 try:
@@ -228,7 +315,7 @@ async def run_server(env: Mapping[str, str]) -> None:
 
     host = env.get("DOUBAO_BIND_HOST", DEFAULT_BIND_HOST)
     port = int(env.get("DOUBAO_BIND_PORT", str(DEFAULT_BIND_PORT)))
-    async with serve(lambda ws: handle_board(ws, env), host, port, max_size=MAX_FRAME_BYTES):
+    async with serve(lambda ws: handle_board(ws, env), host, port, **board_server_options()):
         print(f"Doubao relay listening on ws://{host}:{port}/voice")
         await asyncio.Future()
 
