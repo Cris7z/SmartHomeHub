@@ -8,3 +8,6 @@ compile_commands.json
 .vscode/ipch/
 cad_mcp.log
 src/net/secrets.h
+tools/doubao_relay/.env
+tools/doubao_relay/__pycache__/
+tools/doubao_relay/.venv/
