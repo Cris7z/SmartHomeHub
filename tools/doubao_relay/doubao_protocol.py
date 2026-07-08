@@ -9,6 +9,7 @@ AUDIO_RESPONSE = 0xB
 ERROR_RESPONSE = 0xF
 EVENT_FLAG = 0x4
 MAX_SESSION_ID_BYTES = 128
+MAX_CONNECT_ID_BYTES = 128
 MAX_PAYLOAD_BYTES = 2 * 1024 * 1024
 MAX_FRAME_BYTES = MAX_PAYLOAD_BYTES + 1024
 
@@ -49,6 +50,7 @@ _SESSION_EVENTS = frozenset(
         599,
     }
 )
+_CONNECT_EVENTS = frozenset({1, 2, 50, 51, 52})
 
 
 class ProtocolError(ValueError):
@@ -132,7 +134,7 @@ def decode_frame(data: bytes) -> Frame:
     offset = 4
 
     if message_type == ERROR_RESPONSE:
-        if flags != 0:
+        if flags != 0x0F:
             raise ProtocolError("unsupported error frame flags")
         event = struct.unpack_from(">I", data, offset)[0]
         offset += 4
@@ -159,6 +161,17 @@ def decode_frame(data: bytes) -> Frame:
         except UnicodeDecodeError as exc:
             raise ProtocolError("invalid session id") from exc
         offset += session_size
+    elif message_type != ERROR_RESPONSE and event in _CONNECT_EVENTS:
+        if len(data) >= offset + 4:
+            connect_size = struct.unpack_from(">I", data, offset)[0]
+            next_offset = offset + 4 + connect_size
+            if 0 < connect_size <= MAX_CONNECT_ID_BYTES and len(data) >= next_offset + 4:
+                next_payload_size = struct.unpack_from(">I", data, next_offset)[0]
+                if (
+                    next_payload_size <= MAX_PAYLOAD_BYTES
+                    and len(data) == next_offset + 4 + next_payload_size
+                ):
+                    offset = next_offset
 
     if len(data) < offset + 4:
         raise ProtocolError("truncated payload length")

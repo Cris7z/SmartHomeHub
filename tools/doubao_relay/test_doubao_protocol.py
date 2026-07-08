@@ -115,6 +115,22 @@ class DoubaoProtocolTest(unittest.TestCase):
             Frame(FULL_SERVER_RESPONSE, 451, "session-1", payload, "json"),
         )
 
+    def test_connection_started_response_skips_connect_id(self):
+        payload = b"{}"
+        connect_id = b"c5f80e51803e424dafdf63d1786cf588"
+        encoded = (
+            b"\x11\x94\x10\x00"
+            + struct.pack(">II", 50, len(connect_id))
+            + connect_id
+            + struct.pack(">I", len(payload))
+            + payload
+        )
+
+        self.assertEqual(
+            decode_frame(encoded),
+            Frame(FULL_SERVER_RESPONSE, 50, None, payload, "json"),
+        )
+
     def test_server_audio_response_decodes_exact_fixture(self):
         pcm = b"\x00\x00\x10\x00"
         encoded = (
@@ -236,7 +252,7 @@ class DoubaoProtocolTest(unittest.TestCase):
                 with self.assertRaisesRegex(ProtocolError, name):
                     decode_frame(frame)
 
-    def test_decode_rejects_flagged_error_frame(self):
+    def test_decode_rejects_wrong_error_frame_flag(self):
         bad = bytes([0x11, (ERROR_RESPONSE << 4) | EVENT_FLAG, 0x10, 0x00]) + struct.pack(
             ">II", 40000001, 0
         )
@@ -273,7 +289,7 @@ class DoubaoProtocolTest(unittest.TestCase):
     def test_decode_error_frame_uses_error_code_as_event(self):
         payload = b'{"message":"bad request"}'
         encoded = (
-            bytes([0x11, ERROR_RESPONSE << 4, 0x10, 0x00])
+            bytes([0x11, (ERROR_RESPONSE << 4) | 0x0F, 0x10, 0x00])
             + struct.pack(">II", 40000001, len(payload))
             + payload
         )
@@ -285,7 +301,7 @@ class DoubaoProtocolTest(unittest.TestCase):
 
     def test_error_code_is_not_reinterpreted_as_session_event(self):
         encoded = (
-            bytes([0x11, ERROR_RESPONSE << 4, 0x10, 0x00])
+            bytes([0x11, (ERROR_RESPONSE << 4) | 0x0F, 0x10, 0x00])
             + struct.pack(">II", 200, 0)
         )
 
