@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 
+#include "../app/hub_state.h"
 #include "config.h"
 #include "lamp_effect.h"
 #include "speaker_tone.h"
@@ -145,6 +146,23 @@ bool setupI2sSpeaker() {
   speakerInstalled = true;
   setupStreamingSpeaker(VOICE_OUTPUT_SAMPLE_RATE * 2);
   return true;
+}
+
+bool readI2sMicFrames(int32_t *samples, size_t sampleCapacity, size_t &sampleCount,
+                      uint32_t timeoutMs) {
+  sampleCount = 0;
+  if (!samples || sampleCapacity == 0 || !state.i2sOk) {
+    return false;
+  }
+
+  size_t bytesRead = 0;
+  const esp_err_t result = i2s_read(I2S_NUM_0, samples, sampleCapacity * sizeof(samples[0]),
+                                   &bytesRead, pdMS_TO_TICKS(timeoutMs));
+  if (result != ESP_OK || bytesRead == 0) {
+    return false;
+  }
+  sampleCount = bytesRead / sizeof(samples[0]);
+  return sampleCount > 0;
 }
 
 void cancelSpeakerLocalPlayback() {

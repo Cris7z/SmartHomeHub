@@ -7,6 +7,7 @@
 #include "../board/config.h"
 #include "../board/hardware.h"
 #include "mic_processing.h"
+#include "voice_capture.h"
 
 namespace {
 uint32_t lastSensorReadMs = 0;
@@ -55,6 +56,10 @@ void readEnvironment() {
 }
 
 void readMicrophone() {
+  if (voiceCaptureOwnsMic()) {
+    return;
+  }
+
   if (!state.i2sOk) {
     state.micLevel = 0;
     smoothedMicLevel = 0;

@@ -10,6 +10,7 @@
 #define SMART_HOME_XIAOZHI_ENDPOINT ""
 #define SMART_HOME_XIAOZHI_TOKEN ""
 #define SMART_HOME_XIAOZHI_MODEL ""
+#define SMART_HOME_DOUBAO_RELAY_URL "ws://192.168.1.100:8765/voice"
 // Used only as a fallback when IP city location is unavailable.
 #define SMART_HOME_WEATHER_LAT "24.4798"
 #define SMART_HOME_WEATHER_LON "118.0894"

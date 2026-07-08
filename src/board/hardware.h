@@ -16,6 +16,8 @@ void setLamp(bool on, bool alarm);
 void sendIrDemoBurst();
 bool setupI2sMic();
 bool setupI2sSpeaker();
+bool readI2sMicFrames(int32_t *samples, size_t sampleCapacity, size_t &sampleCount,
+                      uint32_t timeoutMs);
 bool queueSpeakerTone(uint16_t frequencyHz, uint16_t durationMs);
 bool queueSpeakerPcmClip(const int16_t *samples, size_t sampleCount);
 void updateSpeakerAudio();
