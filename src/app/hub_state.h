@@ -30,8 +30,14 @@ struct HubState {
   bool timeReady = false;
   bool weatherReady = false;
   bool locationReady = false;
+  bool i2sSpeakerOk = false;
+  bool speakerPlaying = false;
+  bool xiaozhiEnabled = true;
+  bool xiaozhiAutoWake = true;
+  bool xiaozhiCloudConfigured = false;
   uint8_t displayPage = 0;
   uint8_t aiRiskScore = 0;
+  uint8_t xiaozhiPhase = 0;
   float tempC = 26.5;
   float humidity = 55.0;
   float outdoorTempC = 0.0;
@@ -49,6 +55,9 @@ struct HubState {
   char sunsetText[8] = "--:--";
   char aiRiskText[12] = "LOW";
   char ipText[16] = "--";
+  char xiaozhiStatusText[16] = "IDLE";
+  char xiaozhiPromptText[48] = "Say XiaoZhi";
+  char xiaozhiReplyText[64] = "Local demo ready";
   char eventLog[HUB_EVENT_LOG_COUNT][HUB_EVENT_TEXT_LEN] = {};
   uint8_t eventLogHead = 0;
   uint8_t eventLogCount = 0;
@@ -60,6 +69,9 @@ struct HubState {
   uint32_t lastIrTestBurstMs = 0;
   uint32_t buzzerTestUntilMs = 0;
   uint32_t lastPhoneAlertMs = 0;
+  uint32_t xiaozhiLastTriggerMs = 0;
+  uint32_t xiaozhiPhaseUntilMs = 0;
+  uint32_t xiaozhiMicMutedUntilMs = 0;
 };
 
 extern HubState state;

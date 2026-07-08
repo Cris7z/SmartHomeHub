@@ -8,6 +8,7 @@
 #include "display_weather.h"
 #include "event_log.h"
 #include "hub_state.h"
+#include "xiaozhi_core.h"
 #include "../board/hardware.h"
 #include "../io/mic_processing.h"
 
@@ -43,6 +44,7 @@ constexpr uint16_t COLOR_PANEL_2 = 0x39E7;
 constexpr uint16_t COLOR_CHIP = 0x2124;
 constexpr uint16_t COLOR_MUTED = 0x9CF3;
 constexpr uint16_t COLOR_SHADOW = ILI9341_BLACK;
+constexpr uint8_t DISPLAY_PAGE_COUNT = 5;
 
 enum DynamicSlot : uint8_t {
   SlotCardLeft = 0,
@@ -64,6 +66,7 @@ DisplayCacheSlot homeCache[DynamicSlotCount];
 DisplayCacheSlot weatherCache[DynamicSlotCount];
 DisplayCacheSlot systemCache[DynamicSlotCount];
 DisplayCacheSlot eventsCache[DynamicSlotCount];
+DisplayCacheSlot xiaozhiCache[DynamicSlotCount];
 
 bool updateTextColorCache(DisplayCacheSlot &slot, const char *value, uint16_t color) {
   char key[DISPLAY_CACHE_TEXT_LEN];
@@ -78,6 +81,7 @@ void resetDynamicCaches() {
   resetDisplayCacheSlots(weatherCache, DynamicSlotCount);
   resetDisplayCacheSlots(systemCache, DynamicSlotCount);
   resetDisplayCacheSlots(eventsCache, DynamicSlotCount);
+  resetDisplayCacheSlots(xiaozhiCache, DynamicSlotCount);
 }
 
 void copyShortText(char *out, size_t outSize, const char *text) {
@@ -397,12 +401,12 @@ void drawCachedRowValue(DisplayCacheSlot &slot, int y, const char *value, uint16
 }
 
 void drawPageDots() {
-  const int startX = 62;
+  const int startX = 38;
   const int y = 226;
-  const int barW = 42;
-  for (int i = 0; i < 4; i++) {
+  const int barW = 36;
+  for (int i = 0; i < DISPLAY_PAGE_COUNT; i++) {
     const uint16_t color = state.displayPage == i ? ILI9341_CYAN : ILI9341_DARKGREY;
-    tft.fillRoundRect(startX + i * 54, y, barW, 5, 2, color);
+    tft.fillRoundRect(startX + i * 48, y, barW, 5, 2, color);
   }
 }
 
@@ -567,8 +571,40 @@ void drawEventsDynamic() {
   }
 }
 
+void drawXiaozhiStatic() {
+  drawCommonStatic("XIAOZHI");
+  drawCardFrame(CARD_LEFT_X, CARD_Y, CARD_W, CARD_H, "AI STATE");
+  drawCardFrame(CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H, "SPEAKER");
+  drawRowLabel(ROW_1_Y, "PROMPT");
+  drawRowLabel(ROW_1_Y + ROW_STEP, "REPLY");
+  drawRowLabel(ROW_1_Y + ROW_STEP * 2, "CLOUD");
+  drawRowLabel(ROW_1_Y + ROW_STEP * 3, "WAKE");
+}
+
+void drawXiaozhiDynamic() {
+  const char *phase = xiaozhiPhaseName((XiaozhiPhase)state.xiaozhiPhase);
+  const char *speaker = state.i2sSpeakerOk
+      ? (state.speakerPlaying ? "PLAYING" : "READY")
+      : "I2S ERR";
+  drawCachedCardValue(xiaozhiCache[SlotCardLeft], CARD_LEFT_X, CARD_Y, CARD_W, CARD_H,
+                      phase, state.xiaozhiPhase == (uint8_t)XiaozhiPhase::Idle ? ILI9341_GREEN : ILI9341_CYAN);
+  drawCachedCardValue(xiaozhiCache[SlotCardRight], CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H,
+                      speaker, state.i2sSpeakerOk ? ILI9341_GREEN : ILI9341_RED);
+  drawCachedRowValue(xiaozhiCache[SlotRow1], ROW_1_Y, state.xiaozhiPromptText, ILI9341_LIGHTGREY);
+  drawCachedRowValue(xiaozhiCache[SlotRow2], ROW_1_Y + ROW_STEP, state.xiaozhiReplyText, ILI9341_WHITE);
+  drawCachedRowValue(xiaozhiCache[SlotRow3], ROW_1_Y + ROW_STEP * 2,
+                     state.xiaozhiCloudConfigured ? "CONFIGURED" : "LOCAL DEMO",
+                     state.xiaozhiCloudConfigured ? ILI9341_CYAN : ILI9341_ORANGE);
+  drawCachedRowValue(xiaozhiCache[SlotRow4], ROW_1_Y + ROW_STEP * 3,
+                     state.xiaozhiAutoWake ? "MIC AUTO" : "MANUAL",
+                     state.xiaozhiAutoWake ? ILI9341_GREEN : ILI9341_DARKGREY);
+}
+
 void drawStaticForPage(uint8_t page) {
   switch (page) {
+    case 4:
+      drawXiaozhiStatic();
+      break;
     case 1:
       drawWeatherStatic();
       break;
@@ -586,6 +622,9 @@ void drawStaticForPage(uint8_t page) {
 
 void drawDynamicForPage(uint8_t page) {
   switch (page) {
+    case 4:
+      drawXiaozhiDynamic();
+      break;
     case 1:
       drawWeatherDynamic();
       break;

@@ -49,6 +49,7 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 <button class="secondary" onclick="cmd('home')">Home</button>
 <button class="secondary" onclick="cmd('away')">Away</button>
 <button class="secondary" onclick="cmd('night')">Night</button>
+<button class="secondary" onclick="cmd('xiaozhi')">XiaoZhi</button>
 </div>
 <section class="grid">
 <div class="card"><div class="label">Indoor</div><div class="value" id="indoor">--</div></div>
@@ -59,6 +60,8 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 <div class="card"><div class="label">AI Noise</div><div class="value" id="noise">--</div></div>
 <div class="card"><div class="label">AI Guard</div><div class="value" id="guard">--</div></div>
 <div class="card"><div class="label">Network</div><div class="value" id="net">--</div></div>
+<div class="card"><div class="label">XiaoZhi</div><div class="value" id="xiaozhi">--</div></div>
+<div class="card"><div class="label">Reply</div><div class="value" id="xzreply">--</div></div>
 </section>
 <div class="card" style="margin-top:10px"><div class="label">Recent Events</div><ul id="events"></ul></div>
 </main>
@@ -80,6 +83,9 @@ async function refresh(){
  guard.className='value '+(s.aiRiskScore>=80?'bad':(s.aiRiskScore>=55?'warn':'ok'));
  net.textContent=s.wifiStaConnected?s.ip:'OFFLINE';
  net.className='value '+(s.wifiStaConnected?'ok':'bad');
+ xiaozhi.textContent=s.xiaozhiPhase+(s.speakerPlaying?' / AUDIO':'');
+ xiaozhi.className='value '+(s.xiaozhiPhase==='IDLE'?'ok':'warn');
+ xzreply.textContent=s.xiaozhiReply;
  events.innerHTML=(s.events.length?s.events:['No events']).map(e=>'<li>'+e+'</li>').join('');
 }
 setInterval(refresh,2000);refresh();
@@ -108,6 +114,12 @@ String stateJson() {
   json += "\"micPercent\":" + String(noisePercentFor(state.micLevel, state.micThreshold)) + ",";
   json += "\"aiRiskScore\":" + String(state.aiRiskScore) + ",";
   json += "\"aiRisk\":\"" + String(state.aiRiskText) + "\",";
+  json += "\"xiaozhiPhase\":\"" + String(state.xiaozhiStatusText) + "\",";
+  json += "\"xiaozhiPrompt\":\"" + String(state.xiaozhiPromptText) + "\",";
+  json += "\"xiaozhiReply\":\"" + String(state.xiaozhiReplyText) + "\",";
+  json += "\"xiaozhiCloudConfigured\":" + boolJson(state.xiaozhiCloudConfigured) + ",";
+  json += "\"speakerOk\":" + boolJson(state.i2sSpeakerOk) + ",";
+  json += "\"speakerPlaying\":" + boolJson(state.speakerPlaying) + ",";
   json += "\"acCooling\":" + boolJson(state.acCooling) + ",";
   json += "\"lamp\":" + boolJson(state.lampOverride ? state.manualLamp : state.presence) + ",";
   json += "\"bleClientConnected\":" + boolJson(state.bleClientConnected) + ",";
@@ -149,6 +161,8 @@ bool runDashboardCommand(const String &command) {
     applyHubCommand(HubCommand::RunMacroAway, "WEB");
   } else if (command == "night" || command == "macro_night") {
     applyHubCommand(HubCommand::RunMacroNight, "WEB");
+  } else if (command == "xiaozhi" || command == "ai" || command == "voice") {
+    applyHubCommand(HubCommand::TriggerXiaozhi, "WEB");
   } else {
     return false;
   }

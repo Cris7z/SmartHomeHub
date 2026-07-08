@@ -8,7 +8,8 @@ enum class HubCommand {
   ClearAlarmSecurity,
   RunMacroHome,
   RunMacroAway,
-  RunMacroNight
+  RunMacroNight,
+  TriggerXiaozhi
 };
 
 void applyHubCommand(HubCommand command, const char *source);

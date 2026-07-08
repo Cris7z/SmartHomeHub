@@ -5,10 +5,11 @@
 #include "event_log.h"
 #include "hub_state.h"
 #include "shortcut_macro.h"
+#include "xiaozhi_ai.h"
 #include "../board/config.h"
 
 namespace {
-constexpr uint8_t DISPLAY_PAGE_COUNT = 4;
+constexpr uint8_t DISPLAY_PAGE_COUNT = 5;
 
 void applyShortcutMacro(ShortcutMacroKind kind, const char *label) {
   const ShortcutMacroPreset preset = shortcutMacroPreset(kind);
@@ -85,6 +86,9 @@ void applyHubCommand(HubCommand command, const char *source) {
       break;
     case HubCommand::RunMacroNight:
       applyShortcutMacro(ShortcutMacroKind::Night, label);
+      break;
+    case HubCommand::TriggerXiaozhi:
+      triggerXiaozhiAi(label);
       break;
   }
 }

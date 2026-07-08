@@ -8,7 +8,6 @@
 #include <BLEUtils.h>
 
 #include "../app/controls.h"
-#include "../app/event_log.h"
 #include "../app/hub_state.h"
 #include "../io/mic_processing.h"
 
@@ -27,7 +26,7 @@ String boolJson(bool value) {
 
 String stateJson() {
   String json;
-  json.reserve(860);
+  json.reserve(540);
   json += "{";
   json += "\"tempC\":" + String(state.tempC, 1) + ",";
   json += "\"humidity\":" + String(state.humidity, 0) + ",";
@@ -49,25 +48,16 @@ String stateJson() {
   json += "\"displayPage\":" + String(state.displayPage) + ",";
   json += "\"aiRiskScore\":" + String(state.aiRiskScore) + ",";
   json += "\"aiRisk\":\"" + String(state.aiRiskText) + "\",";
+  json += "\"xiaozhiPhase\":\"" + String(state.xiaozhiStatusText) + "\",";
+  json += "\"xiaozhiCloudConfigured\":" + boolJson(state.xiaozhiCloudConfigured) + ",";
+  json += "\"speakerOk\":" + boolJson(state.i2sSpeakerOk) + ",";
+  json += "\"speakerPlaying\":" + boolJson(state.speakerPlaying) + ",";
   json += "\"bleClientConnected\":" + boolJson(state.bleClientConnected) + ",";
   json += "\"timeReady\":" + boolJson(state.timeReady) + ",";
   json += "\"time\":\"" + String(state.timeText) + "\",";
-  json += "\"date\":\"" + String(state.dateText) + "\",";
   json += "\"weatherReady\":" + boolJson(state.weatherReady) + ",";
-  json += "\"locationReady\":" + boolJson(state.locationReady) + ",";
-  json += "\"location\":\"" + String(state.locationText) + "\",";
-  json += "\"timezone\":\"" + String(state.timezoneText) + "\",";
   json += "\"outdoorTempC\":" + String(state.outdoorTempC, 1) + ",";
-  json += "\"weather\":\"" + String(state.weatherText) + "\",";
-  json += "\"windKph\":" + String(state.windKph, 1) + ",";
-  json += "\"sunrise\":\"" + String(state.sunriseText) + "\",";
-  json += "\"sunset\":\"" + String(state.sunsetText) + "\",";
-  json += "\"events\":[";
-  for (uint8_t i = 0; i < state.eventLogCount; i++) {
-    if (i) json += ",";
-    json += "\"" + String(eventLogLine(i)) + "\"";
-  }
-  json += "]";
+  json += "\"weather\":\"" + String(state.weatherText) + "\"";
   json += "}";
   return json;
 }
@@ -90,6 +80,8 @@ bool runCommand(const String &command) {
     applyHubCommand(HubCommand::RunMacroAway, "BLE");
   } else if (command == "night" || command == "macro_night") {
     applyHubCommand(HubCommand::RunMacroNight, "BLE");
+  } else if (command == "xiaozhi" || command == "ai" || command == "voice") {
+    applyHubCommand(HubCommand::TriggerXiaozhi, "BLE");
   } else {
     Serial.println("[BLE] Unknown command");
     return false;

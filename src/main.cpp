@@ -13,6 +13,7 @@
 #include "app/diagnostics.h"
 #include "app/display.h"
 #include "app/hub_state.h"
+#include "app/xiaozhi_ai.h"
 #include "board/config.h"
 #include "board/hardware.h"
 #include "io/inputs.h"
@@ -23,6 +24,8 @@
 #include "net/web_dashboard.h"
 
 void setup() {
+  clearOnboardRgb();
+
   Serial.begin(115200);
   delay(300);
   Serial.println();
@@ -36,6 +39,9 @@ void setup() {
   Serial.printf("AHT20: %s\n", state.ahtOk ? "OK" : "not found, using demo data");
   state.i2sOk = setupI2sMic();
   Serial.printf("I2S mic: %s\n", state.i2sOk ? "OK" : "not found");
+  state.i2sSpeakerOk = setupI2sSpeaker();
+  Serial.printf("I2S speaker: %s\n", state.i2sSpeakerOk ? "OK" : "not found");
+  setupXiaozhiAi();
 
   setupDisplay();
   setupStatusLamp();
@@ -48,10 +54,12 @@ void setup() {
 }
 
 void loop() {
+  updateSpeakerAudio();
   readEnvironment();
   readInputs();
   updateAutomation();
   updateAiGuard();
+  updateXiaozhiAi();
   updatePhoneAlert();
   updateTimeWeather();
   updateWebDashboard();
