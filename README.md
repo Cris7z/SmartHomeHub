@@ -37,7 +37,7 @@ SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目
 连接 Wi-Fi -> IP 定位城市、同步时间、拉取当地天气和日出日落、启动 Web Dashboard
 安防报警 -> 本地蜂鸣器/灯带报警，并在配置 PushPlus 后发送远程预警
 快捷键宏 -> Home 回到居家自动模式，Away 开启离家安防，Night 开启夜间安防并显示天气时间页
-小智 AI -> 麦克风声音触发或 Web/BLE 命令触发 -> 本地生成家居状态回复 -> I2S 扬声器播放提示音 -> XIAOZHI 页显示状态
+小智 AI -> 麦克风声音触发或 Web/BLE 命令触发 -> 豆包实时语音识别和回复 -> MAX98357A 扬声器播放 TTS -> XIAOZHI 页显示状态
 ```
 
 ## 项目结构
@@ -190,6 +190,51 @@ copy src\net\secrets_example.h src\net\secrets.h
 天气会优先通过公网 IP 自动定位到城市级经纬度，再请求 Open-Meteo 的当地天气、日出和日落时间。`SMART_HOME_WEATHER_LAT` / `SMART_HOME_WEATHER_LON` 只作为 IP 定位失败时的备用坐标。
 
 如果不创建 `secrets.h`，固件仍可运行本地传感器、屏幕、按键、灯带、红外、蜂鸣器和小智 AI 本地演示功能；Wi-Fi、天气、网页控制和 PushPlus 会保持未连接或未配置状态。
+
+## 豆包实时语音配置
+
+小智实时语音链路使用 ESP32-S3 采集 INMP441 音频，通过局域网 WebSocket 发给电脑上的 `tools/doubao_relay`，再由电脑桥接到豆包实时语音 API。电脑只做协议转发，不播放声音；最终 TTS 音频通过 MAX98357A 从开发板扬声器输出。
+
+配置顺序：
+
+1. 删除截图里暴露过的 API Key。
+2. 重新创建一个豆包语音 API Key，只写入 `tools/doubao_relay/.env`。
+3. 执行一次 `tools\doubao_relay\setup.ps1`。
+4. 执行 `D:\A-Soft\DevTools\SmartHomeHubVoiceRelay\.venv\Scripts\python.exe -m tools.doubao_relay.server --probe`，必须看到 `AUTH OK`。
+5. 把 `run.ps1` 打印出来的局域网地址写入被 git 忽略的 `src/net/secrets.h`：
+
+```cpp
+#define SMART_HOME_DOUBAO_RELAY_URL "ws://电脑局域网IP:8765/voice"
+```
+
+6. 启动 `tools\doubao_relay\run.ps1`，再编译上传固件。
+
+`.env` 示例：
+
+```dotenv
+DOUBAO_API_KEY=
+DOUBAO_APP_ID=
+DOUBAO_ACCESS_KEY=
+DOUBAO_BIND_HOST=0.0.0.0
+DOUBAO_BIND_PORT=8765
+```
+
+实物接线保持不变：
+
+```text
+INMP441: BCLK GPIO15, WS GPIO39, SD GPIO40
+MAX98357A: DIN GPIO47, BCLK GPIO42, LRC GPIO38
+```
+
+验收串口标记：
+
+```text
+[VOICE] relay connected
+[DOUBAO] session started
+[DOUBAO] asr=
+[DOUBAO] reply=
+[VOICE] playback complete
+```
 
 ## 快速开始
 
