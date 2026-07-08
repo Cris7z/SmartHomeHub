@@ -56,8 +56,8 @@ struct HubState {
   char aiRiskText[12] = "LOW";
   char ipText[16] = "--";
   char xiaozhiStatusText[16] = "IDLE";
-  char xiaozhiPromptText[64] = "Say XiaoZhi";
-  char xiaozhiReplyText[96] = "Local demo ready";
+  char xiaozhiPromptText[160] = "Say XiaoZhi";
+  char xiaozhiReplyText[128] = "Local demo ready";
   char eventLog[HUB_EVENT_LOG_COUNT][HUB_EVENT_TEXT_LEN] = {};
   uint8_t eventLogHead = 0;
   uint8_t eventLogCount = 0;

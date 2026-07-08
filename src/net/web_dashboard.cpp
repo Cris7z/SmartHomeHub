@@ -7,6 +7,7 @@
 #include "../app/controls.h"
 #include "../app/event_log.h"
 #include "../app/hub_state.h"
+#include "../app/xiaozhi_ai.h"
 #include "../io/mic_processing.h"
 
 namespace {
@@ -33,8 +34,11 @@ h1{font-size:24px;margin:0 0 12px;color:#fff}
 .buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
 button{height:42px;border:0;border-radius:8px;background:#238636;color:#fff;font-weight:700}
 button.secondary{background:#30363d}
+.voicebar{display:grid;grid-template-columns:minmax(0,1fr) 86px 86px;gap:8px;margin:12px 0}
+input{height:42px;border:1px solid #30363d;border-radius:8px;background:#0d1117;color:#e8edf2;padding:0 12px;font-size:16px}
+.small{font-size:18px;line-height:1.25;word-break:break-word}
 ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
-@media(max-width:560px){.grid,.buttons{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid,.buttons{grid-template-columns:1fr 1fr}.voicebar{grid-template-columns:1fr 72px 72px}}
 </style>
 </head>
 <body>
@@ -51,6 +55,11 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 <button class="secondary" onclick="cmd('night')">Night</button>
 <button class="secondary" onclick="cmd('xiaozhi')">XiaoZhi</button>
 </div>
+<div class="voicebar">
+<input id="xzask" placeholder="Ask XiaoZhi" maxlength="80">
+<button class="secondary" id="talkBtn" onclick="listenXiaoZhi()">Talk</button>
+<button onclick="askXiaoZhi()">Ask</button>
+</div>
 <section class="grid">
 <div class="card"><div class="label">Indoor</div><div class="value" id="indoor">--</div></div>
 <div class="card"><div class="label">Outdoor</div><div class="value" id="outdoor">--</div></div>
@@ -61,12 +70,45 @@ ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
 <div class="card"><div class="label">AI Guard</div><div class="value" id="guard">--</div></div>
 <div class="card"><div class="label">Network</div><div class="value" id="net">--</div></div>
 <div class="card"><div class="label">XiaoZhi</div><div class="value" id="xiaozhi">--</div></div>
-<div class="card"><div class="label">Reply</div><div class="value" id="xzreply">--</div></div>
+<div class="card"><div class="label">Heard</div><div class="value small" id="xzprompt">--</div></div>
+<div class="card"><div class="label">Reply</div><div class="value small" id="xzreply">--</div></div>
 </section>
 <div class="card" style="margin-top:10px"><div class="label">Recent Events</div><ul id="events"></ul></div>
 </main>
 <script>
 async function cmd(name){await fetch('/cmd?name='+encodeURIComponent(name));refresh();}
+async function sendXiaoZhi(prompt){
+ let url='/cmd?name=xiaozhi';
+ if(prompt){url+='&prompt='+encodeURIComponent(prompt);}
+ await fetch(url);
+ refresh();
+}
+async function askXiaoZhi(){
+ const input=document.getElementById('xzask');
+ const text=input.value.trim();
+ if(text){xzprompt.textContent=text;}
+ await sendXiaoZhi(text);
+}
+function listenXiaoZhi(){
+ const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
+ const button=document.getElementById('talkBtn');
+ const input=document.getElementById('xzask');
+ if(!Speech){button.textContent='Type';input.focus();return;}
+ const rec=new Speech();
+ rec.lang='zh-CN';
+ rec.interimResults=false;
+ rec.maxAlternatives=1;
+ button.textContent='...';
+ rec.onresult=function(e){
+  const text=e.results[0][0].transcript.trim();
+  input.value=text;
+  xzprompt.textContent=text;
+  sendXiaoZhi(text);
+ };
+ rec.onerror=function(){button.textContent='Talk';input.focus();};
+ rec.onend=function(){if(button.textContent==='...')button.textContent='Talk';};
+ rec.start();
+}
 function yn(v){return v?'ON':'OFF'}
 async function refresh(){
  const s=await (await fetch('/api/state')).json();
@@ -85,6 +127,7 @@ async function refresh(){
  net.className='value '+(s.wifiStaConnected?'ok':'bad');
  xiaozhi.textContent=s.xiaozhiPhase+(s.speakerPlaying?' / AUDIO':'');
  xiaozhi.className='value '+(s.xiaozhiPhase==='IDLE'?'ok':'warn');
+ xzprompt.textContent=s.xiaozhiPrompt;
  xzreply.textContent=s.xiaozhiReply;
  events.innerHTML=(s.events.length?s.events:['No events']).map(e=>'<li>'+e+'</li>').join('');
 }
@@ -98,9 +141,29 @@ String boolJson(bool value) {
   return value ? "true" : "false";
 }
 
+String jsonString(const char *value) {
+  String out = "\"";
+  const char *cursor = value ? value : "";
+  while (*cursor) {
+    const char c = *cursor++;
+    if (c == '"' || c == '\\') {
+      out += "\\";
+      out += c;
+    } else if (c == '\n') {
+      out += "\\n";
+    } else if (c == '\r') {
+      out += "\\r";
+    } else {
+      out += c;
+    }
+  }
+  out += "\"";
+  return out;
+}
+
 String stateJson() {
   String json;
-  json.reserve(940);
+  json.reserve(1120);
   json += "{";
   json += "\"tempC\":" + String(state.tempC, 1) + ",";
   json += "\"humidity\":" + String(state.humidity, 0) + ",";
@@ -115,8 +178,8 @@ String stateJson() {
   json += "\"aiRiskScore\":" + String(state.aiRiskScore) + ",";
   json += "\"aiRisk\":\"" + String(state.aiRiskText) + "\",";
   json += "\"xiaozhiPhase\":\"" + String(state.xiaozhiStatusText) + "\",";
-  json += "\"xiaozhiPrompt\":\"" + String(state.xiaozhiPromptText) + "\",";
-  json += "\"xiaozhiReply\":\"" + String(state.xiaozhiReplyText) + "\",";
+  json += "\"xiaozhiPrompt\":" + jsonString(state.xiaozhiPromptText) + ",";
+  json += "\"xiaozhiReply\":" + jsonString(state.xiaozhiReplyText) + ",";
   json += "\"xiaozhiCloudConfigured\":" + boolJson(state.xiaozhiCloudConfigured) + ",";
   json += "\"speakerOk\":" + boolJson(state.i2sSpeakerOk) + ",";
   json += "\"speakerPlaying\":" + boolJson(state.speakerPlaying) + ",";
@@ -138,13 +201,13 @@ String stateJson() {
   json += "\"events\":[";
   for (uint8_t i = 0; i < state.eventLogCount; i++) {
     if (i) json += ",";
-    json += "\"" + String(eventLogLine(i)) + "\"";
+    json += jsonString(eventLogLine(i));
   }
   json += "]}";
   return json;
 }
 
-bool runDashboardCommand(const String &command) {
+bool runDashboardCommand(const String &command, const String &prompt) {
   if (command == "security") {
     applyHubCommand(HubCommand::ToggleSecurity, "WEB");
   } else if (command == "lamp") {
@@ -162,7 +225,11 @@ bool runDashboardCommand(const String &command) {
   } else if (command == "night" || command == "macro_night") {
     applyHubCommand(HubCommand::RunMacroNight, "WEB");
   } else if (command == "xiaozhi" || command == "ai" || command == "voice") {
-    applyHubCommand(HubCommand::TriggerXiaozhi, "WEB");
+    if (prompt.length() > 0) {
+      triggerXiaozhiAiWithPrompt("WEB speech", prompt.c_str());
+    } else {
+      applyHubCommand(HubCommand::TriggerXiaozhi, "WEB");
+    }
   } else {
     return false;
   }
@@ -181,7 +248,12 @@ void handleCommand() {
   String command = dashboard.arg("name");
   command.trim();
   command.toLowerCase();
-  dashboard.send(runDashboardCommand(command) ? 200 : 400, "text/plain", command);
+  String prompt = dashboard.arg("prompt");
+  prompt.trim();
+  if (prompt.length() > 120) {
+    prompt.remove(120);
+  }
+  dashboard.send(runDashboardCommand(command, prompt) ? 200 : 400, "text/plain", command);
 }
 }
 

@@ -19,8 +19,15 @@ void setXiaozhiPhase(XiaozhiPhase phase, uint32_t nowMs, uint32_t holdMs) {
   strlcpy(state.xiaozhiStatusText, xiaozhiPhaseName(phase), sizeof(state.xiaozhiStatusText));
 }
 
-void buildLocalPrompt() {
-  strlcpy(state.xiaozhiPromptText, "Home status request", sizeof(state.xiaozhiPromptText));
+const char *defaultPrompt() {
+  return "Home status request";
+}
+
+bool hasText(const char *text) {
+  return text && text[0] != '\0';
+}
+
+void buildLocalReply() {
   formatXiaozhiLocalReply(state.xiaozhiReplyText, sizeof(state.xiaozhiReplyText),
                           state.tempC, state.humidity,
                           state.presence, state.securityArmed);
@@ -31,7 +38,10 @@ bool hasXiaozhiCloudConfig() {
 }
 
 void startThinking(uint32_t nowMs) {
-  buildLocalPrompt();
+  if (!hasText(state.xiaozhiPromptText)) {
+    strlcpy(state.xiaozhiPromptText, defaultPrompt(), sizeof(state.xiaozhiPromptText));
+  }
+  buildLocalReply();
   setXiaozhiPhase(XiaozhiPhase::Thinking, nowMs, XIAOZHI_THINK_MS);
   logHubEvent("XIAOZHI think");
   bool cloudOk = false;
@@ -83,19 +93,25 @@ void setupXiaozhiAi() {
 }
 
 void triggerXiaozhiAi(const char *source) {
+  triggerXiaozhiAiWithPrompt(source, nullptr);
+}
+
+void triggerXiaozhiAiWithPrompt(const char *source, const char *prompt) {
   if (!state.xiaozhiEnabled) {
     return;
   }
 
   const uint32_t now = millis();
+  const char *effectivePrompt = hasText(prompt) ? prompt : defaultPrompt();
   state.xiaozhiLastTriggerMs = now;
   state.xiaozhiMicMutedUntilMs = 0;
-  strlcpy(state.xiaozhiPromptText, source ? source : "manual", sizeof(state.xiaozhiPromptText));
+  strlcpy(state.xiaozhiPromptText, effectivePrompt, sizeof(state.xiaozhiPromptText));
   strlcpy(state.xiaozhiReplyText, "Listening...", sizeof(state.xiaozhiReplyText));
   setXiaozhiPhase(XiaozhiPhase::Listening, now, XIAOZHI_LISTEN_MS);
   state.displayPage = 4;
   logHubEvent("XIAOZHI wake");
-  Serial.printf("[XIAOZHI] wake source=%s\n", source ? source : "AUTO");
+  Serial.printf("[XIAOZHI] wake source=%s prompt='%s'\n",
+                source ? source : "AUTO", state.xiaozhiPromptText);
 }
 
 void updateXiaozhiAi() {
