@@ -4,7 +4,7 @@ import json
 ALLOWED_TYPES = frozenset({"hello", "start_turn", "end_audio", "cancel"})
 ALLOWED_FIELDS = frozenset({"type", "protocol", "home"})
 MAX_CONTROL_BYTES = 2048
-MAX_HOME_BYTES = 512
+MAX_HOME_BYTES = 768
 PROTOCOL_VERSION = 1
 
 

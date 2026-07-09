@@ -34,6 +34,7 @@ struct HubState {
   bool speakerPlaying = false;
   bool xiaozhiEnabled = true;
   bool xiaozhiAutoWake = true;
+  bool xiaozhiManualMode = false;
   bool xiaozhiCloudConfigured = false;
   bool doubaoRelayConfigured = false;
   bool doubaoRelayConnected = false;
@@ -76,6 +77,7 @@ struct HubState {
   uint32_t xiaozhiLastTriggerMs = 0;
   uint32_t xiaozhiPhaseUntilMs = 0;
   uint32_t xiaozhiMicMutedUntilMs = 0;
+  uint32_t xiaozhiManualRestartMs = 0;
 };
 
 extern HubState state;

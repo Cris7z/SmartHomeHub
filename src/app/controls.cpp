@@ -90,5 +90,45 @@ void applyHubCommand(HubCommand command, const char *source) {
     case HubCommand::TriggerXiaozhi:
       triggerXiaozhiAi(label);
       break;
+    case HubCommand::ToggleXiaozhi:
+      toggleXiaozhiAi(label);
+      break;
+    case HubCommand::SetSecurityOn:
+      state.forceSecurity = true;
+      logHubEvent("AI SEC on");
+      Serial.printf("[%s] AI security: ON\n", label);
+      break;
+    case HubCommand::SetSecurityOff:
+      state.forceSecurity = false;
+      logHubEvent("AI SEC off");
+      Serial.printf("[%s] AI security: OFF\n", label);
+      break;
+    case HubCommand::SetLampOn:
+      state.lampOverride = true;
+      state.manualLamp = true;
+      logHubEvent("AI LAMP on");
+      Serial.printf("[%s] AI lamp: ON\n", label);
+      break;
+    case HubCommand::SetLampOff:
+      state.lampOverride = true;
+      state.manualLamp = false;
+      logHubEvent("AI LAMP off");
+      Serial.printf("[%s] AI lamp: OFF\n", label);
+      break;
+    case HubCommand::SetAcOn:
+      state.manualAc = true;
+      state.acCommandRequested = true;
+      state.irTestActive = true;
+      state.irTestUntilMs = millis() + IR_TEST_WINDOW_MS;
+      state.lastIrTestBurstMs = 0;
+      logHubEvent("AI AC on");
+      Serial.printf("[%s] AI AC: ON\n", label);
+      break;
+    case HubCommand::SetAcOff:
+      state.manualAc = false;
+      state.acCommandRequested = false;
+      logHubEvent("AI AC off");
+      Serial.printf("[%s] AI AC: OFF\n", label);
+      break;
   }
 }

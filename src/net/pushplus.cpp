@@ -4,6 +4,7 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 
+#include "../app/ai_assistant.h"
 #include "../app/hub_state.h"
 #include "secrets_config.h"
 
@@ -92,14 +93,13 @@ bool sendPhoneAlert() {
   http.begin("http://www.pushplus.plus/send");
   http.addHeader("Content-Type", "application/json");
 
-  String content = "Security mode detected abnormal noise.<br>";
-  content += "Temp: " + String(state.tempC, 1) + "C<br>";
-  content += "Humidity: " + String(state.humidity, 0) + "%<br>";
-  content += "Mic RMS: " + String((long)state.micLevel);
+  char alertText[360];
+  buildAiAlertText(alertText, sizeof(alertText));
+  String content = alertText;
 
   String body = "{";
   body += "\"token\":\"" + String(SMART_HOME_PUSHPLUS_TOKEN) + "\",";
-  body += "\"title\":\"Smart Home Alert\",";
+  body += "\"title\":\"SmartHomeHub 安全提醒\",";
   body += "\"content\":\"" + content + "\",";
   body += "\"template\":\"html\"";
   body += "}";

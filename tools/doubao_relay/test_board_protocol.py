@@ -30,7 +30,7 @@ class BoardProtocolTest(unittest.TestCase):
             parse_control_message('{"type":"hello","protocol":2}')
 
     def test_rejects_oversized_home_snapshot(self):
-        large_value = "x" * 600
+        large_value = "x" * 900
 
         with self.assertRaisesRegex(BoardMessageError, "home"):
             parse_control_message(

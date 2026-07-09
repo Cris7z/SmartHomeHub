@@ -50,9 +50,10 @@ void updateClockText() {
 void applyFallbackLocation() {
   if (fallbackLocationApplied || state.locationReady) return;
   fallbackLocationApplied = true;
+  state.locationReady = true;
   state.weatherLat = String(SMART_HOME_WEATHER_LAT).toFloat();
   state.weatherLon = String(SMART_HOME_WEATHER_LON).toFloat();
-  strlcpy(state.locationText, "Manual", sizeof(state.locationText));
+  strlcpy(state.locationText, "Xiamen", sizeof(state.locationText));
   strlcpy(state.timezoneText, "Asia/Shanghai", sizeof(state.timezoneText));
 }
 
@@ -65,7 +66,10 @@ void applyUtcOffset(int utcOffsetSeconds) {
 }
 
 void fetchLocation() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  // Keep the demo location stable. Campus/mobile carrier IP geolocation often
+  // reports a different city from the actual room location.
+  applyFallbackLocation();
+  return;
 
   const uint32_t now = millis();
   const uint32_t interval = state.locationReady ? LOCATION_UPDATE_MS : LOCATION_RETRY_MS;

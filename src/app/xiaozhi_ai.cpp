@@ -48,7 +48,6 @@ bool startXiaozhiRelayTurn(const char *source, uint32_t nowMs) {
   strlcpy(state.xiaozhiReplyText, "Listening...", sizeof(state.xiaozhiReplyText));
   state.xiaozhiErrorText[0] = '\0';
   setXiaozhiPhase(XiaozhiPhase::Listening, nowMs, 0);
-  state.displayPage = 4;
   logHubEvent("XIAOZHI relay");
   Serial.printf("[XIAOZHI] relay wake source=%s ready=%d\n",
                 source ? source : "AUTO", voiceStreamReady());
@@ -59,6 +58,8 @@ bool startXiaozhiRelayTurn(const char *source, uint32_t nowMs) {
 void setupXiaozhiAi() {
   state.xiaozhiEnabled = true;
   state.xiaozhiAutoWake = XIAOZHI_AUTO_WAKE_ENABLED;
+  state.xiaozhiManualMode = false;
+  state.xiaozhiManualRestartMs = 0;
   state.xiaozhiCloudConfigured = false;
   state.doubaoRelayConfigured = voiceStreamConfigured();
   setXiaozhiPhase(XiaozhiPhase::Idle, millis(), 0);
@@ -72,6 +73,34 @@ void setupXiaozhiAi() {
 
 void triggerXiaozhiAi(const char *source) {
   triggerXiaozhiAiWithPrompt(source, nullptr);
+}
+
+void toggleXiaozhiAi(const char *source) {
+  if (!state.xiaozhiEnabled) {
+    return;
+  }
+
+  const uint32_t now = millis();
+  if (state.xiaozhiManualMode || voiceStreamTurnActive() || state.speakerPlaying) {
+    state.xiaozhiManualMode = false;
+    state.xiaozhiManualRestartMs = 0;
+    cancelVoiceStreamTurn(source ? source : "KEY");
+    state.xiaozhiLastTriggerMs = now;
+    state.xiaozhiMicMutedUntilMs = now + XIAOZHI_MIC_COOLDOWN_AFTER_SPEAK_MS;
+    strlcpy(state.xiaozhiPromptText, "Say XiaoZhi", sizeof(state.xiaozhiPromptText));
+    strlcpy(state.xiaozhiReplyText, "Stopped", sizeof(state.xiaozhiReplyText));
+    state.xiaozhiErrorText[0] = '\0';
+    setXiaozhiPhase(XiaozhiPhase::Idle, now, 0);
+    logHubEvent("XIAOZHI stop");
+    Serial.printf("[XIAOZHI] toggle stop source=%s\n", source ? source : "KEY");
+    return;
+  }
+
+  state.xiaozhiManualMode = true;
+  state.xiaozhiManualRestartMs = 0;
+  if (!startXiaozhiRelayTurn(source, now)) {
+    state.xiaozhiManualMode = false;
+  }
 }
 
 void triggerXiaozhiAiWithPrompt(const char *source, const char *prompt) {
@@ -101,7 +130,7 @@ void updateXiaozhiAi() {
   const bool autoSoundRising = state.soundTriggered && !lastAutoSoundTriggered;
   lastAutoSoundTriggered = state.soundTriggered;
 
-  const XiaozhiPhase phase = (XiaozhiPhase)state.xiaozhiPhase;
+  XiaozhiPhase phase = (XiaozhiPhase)state.xiaozhiPhase;
   const bool micSuppressed =
       xiaozhiMicSuppressed(state.speakerPlaying, now, state.xiaozhiMicMutedUntilMs);
   const bool autoWakeReady =
@@ -109,6 +138,7 @@ void updateXiaozhiAi() {
       state.doubaoRelayConfigured &&
       state.doubaoRelayConnected &&
       state.wifiStaConnected &&
+      !state.securityArmed &&
       !micSuppressed;
   if (!autoWakeReady) {
     autoWakeArmed = false;
@@ -143,6 +173,11 @@ void updateXiaozhiAi() {
   }
   if (phase != XiaozhiPhase::Idle && !voiceStreamTurnActive() && !state.speakerPlaying) {
     state.xiaozhiMicMutedUntilMs = now + XIAOZHI_MIC_COOLDOWN_AFTER_SPEAK_MS;
+    state.xiaozhiManualRestartMs = 0;
     setXiaozhiPhase(XiaozhiPhase::Idle, now, 0);
+    phase = XiaozhiPhase::Idle;
   }
+
+  state.xiaozhiManualMode = false;
+  state.xiaozhiManualRestartMs = 0;
 }

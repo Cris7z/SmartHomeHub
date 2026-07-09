@@ -2,11 +2,18 @@ $ErrorActionPreference = 'Stop'
 
 $InstallRoot = 'D:\A-Soft\DevTools\SmartHomeHubVoiceRelay'
 $Venv = Join-Path $InstallRoot '.venv'
-$Python = 'D:\A-Soft\DevTools\Python313\python.exe'
+$PreferredPython = 'D:\A-Soft\DevTools\Python313\python.exe'
+$PythonCommand = if (Test-Path -LiteralPath $PreferredPython) {
+    $PreferredPython
+} else {
+    Get-Command python -ErrorAction Stop
+}
+$PythonLabel = if ($PythonCommand -is [string]) { $PythonCommand } else { $PythonCommand.Definition }
 
 Write-Host 'Estimated program/cache use: under 100 MB on D:'
+Write-Host "Using Python: $PythonLabel"
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
-& $Python -m venv $Venv
+& $PythonCommand -m venv $Venv
 & (Join-Path $Venv 'Scripts\python.exe') -m pip install --upgrade pip
 & (Join-Path $Venv 'Scripts\python.exe') -m pip install -r "$PSScriptRoot\requirements.txt"
 

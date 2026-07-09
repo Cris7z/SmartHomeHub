@@ -441,7 +441,7 @@ void drawHomeStatic() {
   drawRowLabel(ROW_1_Y, "ROOM");
   drawRowLabel(ROW_1_Y + ROW_STEP, "SEC");
   drawRowLabel(ROW_1_Y + ROW_STEP * 2, "AC");
-  drawRowLabel(ROW_1_Y + ROW_STEP * 3, "IR");
+  drawRowLabel(ROW_1_Y + ROW_STEP * 3, "LAMP");
 }
 
 void drawHomeDynamic() {
@@ -452,10 +452,16 @@ void drawHomeDynamic() {
 
   drawCachedCardValue(homeCache[SlotCardLeft], CARD_LEFT_X, CARD_Y, CARD_W, CARD_H, tempText, ILI9341_CYAN);
   drawCachedCardValue(homeCache[SlotCardRight], CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H, humText, ILI9341_GREEN);
-  drawCachedRowValue(homeCache[SlotRow1], ROW_1_Y, state.presence ? "OCCUPIED" : "EMPTY", state.presence ? ILI9341_GREEN : ILI9341_ORANGE);
+  const bool roomOccupiedForDisplay = state.presence && !state.forceSecurity;
+  drawCachedRowValue(homeCache[SlotRow1], ROW_1_Y,
+                     roomOccupiedForDisplay ? "OCCUPIED" : "EMPTY",
+                     roomOccupiedForDisplay ? ILI9341_GREEN : ILI9341_ORANGE);
   drawCachedRowValue(homeCache[SlotRow2], ROW_1_Y + ROW_STEP, state.securityArmed ? "ARMED" : "OFF", state.securityArmed ? ILI9341_YELLOW : ILI9341_DARKGREY);
   drawCachedRowValue(homeCache[SlotRow3], ROW_1_Y + ROW_STEP * 2, state.acCooling ? "COOLING" : "STANDBY", state.acCooling ? ILI9341_CYAN : ILI9341_DARKGREY);
-  drawCachedRowValue(homeCache[SlotRow4], ROW_1_Y + ROW_STEP * 3, state.irReceived ? "RX" : "IDLE", state.irReceived ? ILI9341_MAGENTA : ILI9341_DARKGREY);
+  const bool lampActuallyOn = state.alarm || (state.lampOverride ? state.manualLamp : state.presence);
+  drawCachedRowValue(homeCache[SlotRow4], ROW_1_Y + ROW_STEP * 3,
+                     lampActuallyOn ? "ON" : "OFF",
+                     lampActuallyOn ? ILI9341_GREEN : ILI9341_DARKGREY);
 }
 
 void drawWeatherStatic() {
@@ -524,7 +530,7 @@ void drawSystemStatic() {
   drawCardFrame(CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H, "BLE");
   drawRowLabel(ROW_1_Y, "SOUND");
   drawRowLabel(ROW_1_Y + ROW_STEP, "LIMIT");
-  drawRowLabel(ROW_1_Y + ROW_STEP * 2, "LAMP");
+  drawRowLabel(ROW_1_Y + ROW_STEP * 2, "IR");
   drawRowLabel(ROW_1_Y + ROW_STEP * 3, "IR TEST");
 }
 
@@ -538,7 +544,9 @@ void drawSystemDynamic() {
   drawCachedCardValue(systemCache[SlotCardRight], CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H, state.bleClientConnected ? "CONNECTED" : "WAIT", state.bleClientConnected ? ILI9341_GREEN : ILI9341_DARKGREY);
   drawCachedRowValue(systemCache[SlotRow1], ROW_1_Y, state.soundTriggered ? "LOUD" : "QUIET", state.soundTriggered ? ILI9341_YELLOW : ILI9341_DARKGREY);
   drawCachedRowValue(systemCache[SlotRow2], ROW_1_Y + ROW_STEP, thresholdText, state.adaptiveMicReady ? ILI9341_GREEN : ILI9341_DARKGREY);
-  drawCachedRowValue(systemCache[SlotRow3], ROW_1_Y + ROW_STEP * 2, state.lampOverride ? (state.manualLamp ? "MANUAL ON" : "MANUAL OFF") : "AUTO", state.lampOverride ? ILI9341_CYAN : ILI9341_GREEN);
+  drawCachedRowValue(systemCache[SlotRow3], ROW_1_Y + ROW_STEP * 2,
+                     state.irReceived ? "RX" : "IDLE",
+                     state.irReceived ? ILI9341_MAGENTA : ILI9341_DARKGREY);
   drawCachedRowValue(systemCache[SlotRow4], ROW_1_Y + ROW_STEP * 3, state.irTestActive ? "RUNNING" : "IDLE", state.irTestActive ? ILI9341_MAGENTA : ILI9341_DARKGREY);
 }
 
@@ -586,17 +594,21 @@ void drawXiaozhiDynamic() {
   const char *speaker = state.i2sSpeakerOk
       ? (state.speakerPlaying ? "PLAYING" : "READY")
       : "I2S ERR";
+  const char *promptStatus = state.doubaoSessionActive ? "VOICE INPUT" : "PRESS/WAKE";
+  const char *replyStatus = state.xiaozhiErrorText[0]
+      ? "ERROR"
+      : (state.speakerPlaying ? "VOICE REPLY" : "READY");
   drawCachedCardValue(xiaozhiCache[SlotCardLeft], CARD_LEFT_X, CARD_Y, CARD_W, CARD_H,
-                      phase, state.xiaozhiPhase == (uint8_t)XiaozhiPhase::Idle ? ILI9341_GREEN : ILI9341_CYAN);
+                      phase, state.xiaozhiPhase != (uint8_t)XiaozhiPhase::Idle ? ILI9341_CYAN : ILI9341_GREEN);
   drawCachedCardValue(xiaozhiCache[SlotCardRight], CARD_RIGHT_X, CARD_Y, CARD_W, CARD_H,
                       speaker, state.i2sSpeakerOk ? ILI9341_GREEN : ILI9341_RED);
-  drawCachedRowValue(xiaozhiCache[SlotRow1], ROW_1_Y, state.xiaozhiPromptText, ILI9341_LIGHTGREY);
-  drawCachedRowValue(xiaozhiCache[SlotRow2], ROW_1_Y + ROW_STEP, state.xiaozhiReplyText, ILI9341_WHITE);
+  drawCachedRowValue(xiaozhiCache[SlotRow1], ROW_1_Y, promptStatus, ILI9341_LIGHTGREY);
+  drawCachedRowValue(xiaozhiCache[SlotRow2], ROW_1_Y + ROW_STEP, replyStatus, ILI9341_WHITE);
   drawCachedRowValue(xiaozhiCache[SlotRow3], ROW_1_Y + ROW_STEP * 2,
                      state.doubaoRelayConnected ? "DOUBAO READY" : "DOUBAO OFFLINE",
                      state.doubaoRelayConnected ? ILI9341_CYAN : ILI9341_ORANGE);
   drawCachedRowValue(xiaozhiCache[SlotRow4], ROW_1_Y + ROW_STEP * 3,
-                     state.xiaozhiAutoWake ? "MIC AUTO" : "MANUAL",
+                     state.xiaozhiAutoWake ? "MIC AUTO" : "AUTO OFF",
                      state.xiaozhiAutoWake ? ILI9341_GREEN : ILI9341_DARKGREY);
 }
 

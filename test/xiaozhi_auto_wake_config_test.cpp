@@ -11,10 +11,11 @@ int main() {
   buffer << input.rdbuf();
   const std::string source = buffer.str();
 
-  assert(source.find("constexpr bool XIAOZHI_AUTO_WAKE_ENABLED = true;") != std::string::npos);
-  assert(source.find("constexpr int MIC_RMS_TRIGGER = 30000;") != std::string::npos);
-  assert(source.find("constexpr int MIC_RMS_ADAPT_MARGIN = 6000;") != std::string::npos);
+  assert(source.find("constexpr bool XIAOZHI_AUTO_WAKE_ENABLED = false;") != std::string::npos);
+  assert(source.find("constexpr int MIC_RMS_TRIGGER = 36000;") != std::string::npos);
+  assert(source.find("constexpr int MIC_RMS_ADAPT_MARGIN = 9000;") != std::string::npos);
   assert(source.find("constexpr int MIC_RMS_ADAPT_MULTIPLIER_PERCENT = 120;") != std::string::npos);
+  assert(source.find("constexpr int MIC_ALARM_RMS_TRIGGER = 70000;") != std::string::npos);
   assert(source.find("constexpr uint8_t VOICE_PCM_RIGHT_SHIFT = 16;") != std::string::npos);
   assert(source.find("constexpr uint32_t XIAOZHI_MIC_COOLDOWN_AFTER_SPEAK_MS = 6000;") != std::string::npos);
   assert(source.find("constexpr uint32_t XIAOZHI_AUTO_REARM_QUIET_MS = 1200;") != std::string::npos);

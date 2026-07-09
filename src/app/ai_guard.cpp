@@ -31,7 +31,7 @@ void updateAiGuard() {
   score += soundRiskScore();
 
   state.aiRiskScore = clampScore(score);
-  if (state.alarm || state.aiRiskScore >= 80) {
+  if (state.alarm) {
     strlcpy(state.aiRiskText, "ALARM", sizeof(state.aiRiskText));
   } else if (state.aiRiskScore >= 55) {
     strlcpy(state.aiRiskText, "HIGH", sizeof(state.aiRiskText));

@@ -9,7 +9,14 @@ enum class HubCommand {
   RunMacroHome,
   RunMacroAway,
   RunMacroNight,
-  TriggerXiaozhi
+  TriggerXiaozhi,
+  ToggleXiaozhi,
+  SetSecurityOn,
+  SetSecurityOff,
+  SetLampOn,
+  SetLampOff,
+  SetAcOn,
+  SetAcOff
 };
 
 void applyHubCommand(HubCommand command, const char *source);

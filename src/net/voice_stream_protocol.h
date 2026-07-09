@@ -7,12 +7,14 @@ enum class VoiceRelayMessageType {
   Phase,
   Asr,
   Reply,
+  Action,
   Done,
   Error,
 };
 
 struct VoiceRelayMessage {
   VoiceRelayMessageType type = VoiceRelayMessageType::Error;
+  char name[32] = {};
   char text[192] = {};
 };
 

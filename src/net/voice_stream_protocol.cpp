@@ -82,6 +82,8 @@ bool mapType(const char *type, VoiceRelayMessageType &mapped) {
     mapped = VoiceRelayMessageType::Asr;
   } else if (std::strcmp(type, "reply") == 0) {
     mapped = VoiceRelayMessageType::Reply;
+  } else if (std::strcmp(type, "action") == 0) {
+    mapped = VoiceRelayMessageType::Action;
   } else if (std::strcmp(type, "done") == 0) {
     mapped = VoiceRelayMessageType::Done;
   } else if (std::strcmp(type, "error") == 0) {
@@ -118,6 +120,11 @@ bool parseVoiceRelayMessage(const char *json, VoiceRelayMessage &message) {
     if (!readField(json, "\"text\"", parsed.text, TEXT_CAPACITY)) {
       return false;
     }
+  } else if (parsed.type == VoiceRelayMessageType::Action) {
+    if (!readField(json, "\"name\"", parsed.name, sizeof(parsed.name))) {
+      return false;
+    }
+    readField(json, "\"text\"", parsed.text, TEXT_CAPACITY);
   } else if (parsed.type == VoiceRelayMessageType::Error) {
     if (!readField(json, "\"message\"", parsed.text, TEXT_CAPACITY)) {
       readField(json, "\"code\"", parsed.text, TEXT_CAPACITY);

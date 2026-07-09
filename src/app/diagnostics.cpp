@@ -14,6 +14,7 @@ void printSerialStatus() {
   const bool xiaozhiMicMuted =
       state.speakerPlaying ||
       (state.xiaozhiMicMutedUntilMs != 0 && now < state.xiaozhiMicMutedUntilMs);
+  const bool lampActuallyOn = state.alarm || (state.lampOverride ? state.manualLamp : state.presence);
 
   Serial.printf("T=%.1fC H=%.0f%% presence=%d security=%d sound=%d mic=%ld micPct=%d%% base=%ld thr=%ld risk=%u/%s ir=%d alarm=%d ac=%d lamp=%d lampOverride=%d page=%u xz=%s xzMute=%d relay=%d/%d/%d spk=%d play=%d ble=%d sta=%d ip=%s push=%d time=%s weather=%s out=%.1fC loc=%s rise=%s set=%s\n",
                 state.tempC, state.humidity, state.presence, state.securityArmed,
@@ -21,7 +22,7 @@ void printSerialStatus() {
                 noisePercentFor(state.micLevel, state.micThreshold), (long)state.micBaseline,
                 (long)state.micThreshold, state.aiRiskScore, state.aiRiskText,
                 state.irReceived, state.alarm, state.acCooling,
-                state.manualLamp, state.lampOverride, state.displayPage,
+                lampActuallyOn, state.lampOverride, state.displayPage,
                 xiaozhiPhaseName((XiaozhiPhase)state.xiaozhiPhase),
                 xiaozhiMicMuted, state.doubaoRelayConfigured,
                 state.doubaoRelayConnected, state.doubaoSessionActive,

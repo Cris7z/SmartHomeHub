@@ -4,6 +4,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
+#include "../app/ai_assistant.h"
 #include "../app/controls.h"
 #include "../app/event_log.h"
 #include "../app/hub_state.h"
@@ -20,62 +21,153 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lexin Smart Home</title>
+<title>SmartHomeHub V1.1</title>
 <style>
-:root{font-family:Arial,Helvetica,sans-serif;color:#e8edf2;background:#0d1117}
-body{margin:0;padding:18px;background:#0d1117}
-main{max-width:760px;margin:0 auto}
-h1{font-size:24px;margin:0 0 12px;color:#fff}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px}
-.label{font-size:12px;color:#8b949e;text-transform:uppercase}
-.value{font-size:26px;margin-top:6px;color:#58a6ff}
-.ok{color:#3fb950}.warn{color:#f2cc60}.bad{color:#ff7b72}
-.buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
-button{height:42px;border:0;border-radius:8px;background:#238636;color:#fff;font-weight:700}
-button.secondary{background:#30363d}
-.voicebar{display:grid;grid-template-columns:minmax(0,1fr) 86px 86px;gap:8px;margin:12px 0}
-input{height:42px;border:1px solid #30363d;border-radius:8px;background:#0d1117;color:#e8edf2;padding:0 12px;font-size:16px}
-.small{font-size:18px;line-height:1.25;word-break:break-word}
-ul{margin:8px 0 0;padding-left:18px;color:#c9d1d9}
-@media(max-width:560px){.grid,.buttons{grid-template-columns:1fr 1fr}.voicebar{grid-template-columns:1fr 72px 72px}}
+:root{
+  color:#182126;
+  background:#eef2f4;
+  font-family:Inter,Arial,Helvetica,sans-serif;
+  --ink:#182126;
+  --muted:#62717a;
+  --line:#d8e0e4;
+  --panel:#ffffff;
+  --panel2:#f7fafb;
+  --dark:#142126;
+  --teal:#008f8c;
+  --blue:#2563eb;
+  --amber:#d97706;
+  --red:#c2410c;
+  --green:#16803c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#eef2f4;color:var(--ink)}
+main{max-width:1060px;margin:0 auto;padding:18px}
+.topbar{
+  background:var(--dark);
+  color:#fff;
+  border-radius:8px;
+  padding:18px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px;
+  align-items:center;
+  border:1px solid #24353b;
+}
+h1{font-size:26px;line-height:1.05;margin:0}
+.subtitle{margin-top:6px;color:#b7c7cd;font-size:14px}
+.topmeta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pill{border:1px solid #365057;border-radius:999px;padding:7px 10px;font-size:12px;color:#dce8eb;background:#1d3036}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+.section{margin-top:12px}
+.ai-panel{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;align-items:stretch}
+.ai-advice{border-left:5px solid var(--teal);min-height:112px}
+.label{font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;font-weight:800}
+.value{font-size:26px;margin-top:7px;color:var(--blue);font-weight:800;line-height:1.12;overflow-wrap:anywhere}
+.small{font-size:16px;font-weight:700;line-height:1.38}
+.voicebar{display:grid;grid-template-columns:minmax(0,1fr) 78px 78px;gap:8px;margin-top:12px}
+input{height:42px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);padding:0 12px;font-size:15px;min-width:0}
+button{height:42px;border:0;border-radius:6px;background:var(--teal);color:#fff;font-weight:800;letter-spacing:.01em}
+button.secondary{background:#34454c}
+button.warn{background:var(--amber)}
+button.danger{background:var(--red)}
+.layout{display:grid;grid-template-columns:1.4fr .9fr;gap:12px;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.control-title{font-size:13px;font-weight:900;margin:0 0 10px;color:#34454c}
+.events{margin-top:12px}
+ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:7px}
+li{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:#33444b;font-size:14px}
+.ok{color:var(--green)}.warnText{color:var(--amber)}.bad{color:var(--red)}
+.status-ok{border-color:#bfe3ce;background:#f1fbf5}
+.status-warn{border-color:#f2d49b;background:#fff8eb}
+.status-bad{border-color:#efb4a2;background:#fff3ef}
+@media(max-width:780px){
+  main{padding:12px}
+  .topbar,.ai-panel,.layout{grid-template-columns:1fr}
+  .topmeta{justify-content:flex-start}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:500px){
+  .grid,.controls{grid-template-columns:1fr}
+  .voicebar{grid-template-columns:1fr 68px 68px}
+  h1{font-size:22px}
+}
 </style>
 </head>
 <body>
 <main>
-<h1>Lexin Smart Home</h1>
-<div class="buttons">
-<button onclick="cmd('security')">Security</button>
-<button onclick="cmd('lamp')">Lamp</button>
-<button onclick="cmd('ac')">AC / IR</button>
-<button class="secondary" onclick="cmd('page')">Page</button>
-<button class="secondary" onclick="cmd('clear')">Clear</button>
-<button class="secondary" onclick="cmd('home')">Home</button>
-<button class="secondary" onclick="cmd('away')">Away</button>
-<button class="secondary" onclick="cmd('night')">Night</button>
-<button class="secondary" onclick="cmd('xiaozhi')">XiaoZhi</button>
-</div>
-<div class="voicebar">
-<input id="xzask" placeholder="Ask XiaoZhi" maxlength="80">
-<button class="secondary" id="talkBtn" onclick="listenXiaoZhi()">Mic</button>
-<button onclick="askXiaoZhi()">Ask</button>
-</div>
-<section class="grid">
-<div class="card"><div class="label">Indoor</div><div class="value" id="indoor">--</div></div>
-<div class="card"><div class="label">Outdoor</div><div class="value" id="outdoor">--</div></div>
-<div class="card"><div class="label">Sun</div><div class="value" id="sun">--</div></div>
-<div class="card"><div class="label">Room</div><div class="value" id="room">--</div></div>
-<div class="card"><div class="label">Security</div><div class="value" id="sec">--</div></div>
-<div class="card"><div class="label">AI Noise</div><div class="value" id="noise">--</div></div>
-<div class="card"><div class="label">AI Guard</div><div class="value" id="guard">--</div></div>
-<div class="card"><div class="label">Network</div><div class="value" id="net">--</div></div>
-<div class="card"><div class="label">XiaoZhi</div><div class="value" id="xiaozhi">--</div></div>
-<div class="card"><div class="label">Heard</div><div class="value small" id="xzprompt">--</div></div>
-<div class="card"><div class="label">Reply</div><div class="value small" id="xzreply">--</div></div>
+<header class="topbar">
+  <div>
+    <h1>SmartHomeHub V1.1</h1>
+    <div class="subtitle">AIoT 家庭安全管家</div>
+  </div>
+  <div class="topmeta">
+    <div class="pill" id="netpill">NET --</div>
+    <div class="pill" id="timepill">--:--</div>
+    <div class="pill" id="relaypill">AI --</div>
+  </div>
+</header>
+
+<section class="section ai-panel">
+  <div class="panel ai-advice">
+    <div class="label">AI Advice</div>
+    <div class="value small" id="aiadvice">--</div>
+    <div class="voicebar">
+      <input id="xzask" placeholder="我出门了 / 我要睡觉了 / 现在安全吗" maxlength="80">
+      <button class="secondary" id="talkBtn" onclick="listenXiaoZhi()">Mic</button>
+      <button onclick="askXiaoZhi()">AI</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="label">XiaoZhi</div>
+    <div class="value" id="xiaozhi">--</div>
+    <div class="label" style="margin-top:12px">Reply</div>
+    <div class="value small" id="xzreply">--</div>
+  </div>
 </section>
-<div class="card" style="margin-top:10px"><div class="label">Recent Events</div><ul id="events"></ul></div>
+
+<section class="layout">
+  <div>
+    <div class="grid">
+      <div class="panel" id="roomcard"><div class="label">Room</div><div class="value" id="room">--</div></div>
+      <div class="panel" id="seccard"><div class="label">Security</div><div class="value" id="sec">--</div></div>
+      <div class="panel" id="guardcard"><div class="label">AI Guard</div><div class="value" id="guard">--</div></div>
+      <div class="panel"><div class="label">Indoor</div><div class="value" id="indoor">--</div></div>
+      <div class="panel"><div class="label">Outdoor</div><div class="value" id="outdoor">--</div></div>
+      <div class="panel"><div class="label">Sunrise / Sunset</div><div class="value small" id="sun">--</div></div>
+      <div class="panel"><div class="label">Noise</div><div class="value" id="noise">--</div></div>
+      <div class="panel"><div class="label">Lamp</div><div class="value" id="lamp">--</div></div>
+      <div class="panel"><div class="label">AC / IR</div><div class="value small" id="acir">--</div></div>
+    </div>
+    <div class="panel events">
+      <div class="label">Recent Events</div>
+      <ul id="events"></ul>
+    </div>
+  </div>
+  <aside class="panel">
+    <p class="control-title">Manual Controls</p>
+    <div class="controls">
+      <button onclick="cmd('security')">Security</button>
+      <button onclick="cmd('lamp')">Lamp</button>
+      <button onclick="cmd('ac')" class="warn">AC / IR</button>
+      <button class="secondary" onclick="cmd('page')">Page</button>
+      <button class="danger" onclick="cmd('clear')">Clear</button>
+      <button class="secondary" onclick="cmd('xiaozhi')">XiaoZhi</button>
+      <button class="secondary" onclick="cmd('home')">Home</button>
+      <button class="secondary" onclick="cmd('away')">Away</button>
+      <button class="secondary" onclick="cmd('night')">Night</button>
+      <button class="secondary" onclick="refresh()">Refresh</button>
+    </div>
+    <div class="label" style="margin-top:14px">Heard</div>
+    <div class="value small" id="xzprompt">--</div>
+  </aside>
+</section>
 </main>
 <script>
+const $=id=>document.getElementById(id);
+function setText(id,value){$(id).textContent=value;}
+function setClass(id,name){$(id).className=name;}
+function esc(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function cmd(name){await fetch('/cmd?name='+encodeURIComponent(name));refresh();}
 async function sendXiaoZhi(prompt){
  let url='/cmd?name=xiaozhi';
@@ -84,9 +176,9 @@ async function sendXiaoZhi(prompt){
  await refresh();
 }
 async function askXiaoZhi(){
- const input=document.getElementById('xzask');
+ const input=$('xzask');
  const text=input.value.trim();
- if(text){xzprompt.textContent=text;}
+ if(text){setText('xzprompt',text);}
  await sendXiaoZhi(text);
 }
 async function listenXiaoZhi(){
@@ -95,24 +187,31 @@ async function listenXiaoZhi(){
 function yn(v){return v?'ON':'OFF'}
 async function refresh(){
  const s=await (await fetch('/api/state')).json();
- indoor.textContent=s.tempC.toFixed(1)+'C / '+s.humidity.toFixed(0)+'%';
- outdoor.textContent=s.weatherReady?(s.location+' '+s.outdoorTempC.toFixed(1)+'C '+s.weather):'WAIT';
- sun.textContent=s.weatherReady?(s.sunrise+' / '+s.sunset):'--';
- room.textContent=s.presence?'OCCUPIED':'EMPTY';
- room.className='value '+(s.presence?'ok':'warn');
- sec.textContent=s.securityArmed?'ARMED':'OFF';
- sec.className='value '+(s.alarm?'bad':(s.securityArmed?'warn':'ok'));
- noise.textContent=s.micPercent+'%';
- noise.className='value '+(s.soundTriggered?'warn':'ok');
- guard.textContent=s.aiRiskScore+' '+s.aiRisk;
- guard.className='value '+(s.aiRiskScore>=80?'bad':(s.aiRiskScore>=55?'warn':'ok'));
- net.textContent=s.wifiStaConnected?s.ip:'OFFLINE';
- net.className='value '+(s.wifiStaConnected?'ok':'bad');
- xiaozhi.textContent=s.xiaozhiPhase+(s.speakerPlaying?' / AUDIO':'');
- xiaozhi.className='value '+(s.xiaozhiPhase==='IDLE'?'ok':'warn');
- xzprompt.textContent=s.xiaozhiPrompt;
- xzreply.textContent=s.xiaozhiReply;
- events.innerHTML=(s.events.length?s.events:['No events']).map(e=>'<li>'+e+'</li>').join('');
+ setText('indoor',s.tempC.toFixed(1)+'C / '+s.humidity.toFixed(0)+'%');
+ setText('outdoor',s.weatherReady?(s.location+' '+s.outdoorTempC.toFixed(1)+'C '+s.weather):'WAIT');
+ setText('sun',s.weatherReady?(s.sunrise+' / '+s.sunset):'--');
+ setText('room',s.presence?'OCCUPIED':'EMPTY');
+ setClass('room','value '+(s.presence?'ok':'warnText'));
+ setClass('roomcard','panel '+(s.presence?'status-ok':'status-warn'));
+ setText('sec',s.securityArmed?'ARMED':'OFF');
+ setClass('sec','value '+(s.alarm?'bad':(s.securityArmed?'warnText':'ok')));
+ setClass('seccard','panel '+(s.alarm?'status-bad':(s.securityArmed?'status-warn':'status-ok')));
+ setText('noise',s.micPercent+'%');
+ setClass('noise','value '+(s.soundTriggered?'warnText':'ok'));
+ setText('guard',s.aiRiskScore+' '+s.aiRisk);
+ setClass('guard','value '+(s.aiRiskScore>=80?'bad':(s.aiRiskScore>=55?'warnText':'ok')));
+ setClass('guardcard','panel '+(s.aiRiskScore>=80?'status-bad':(s.aiRiskScore>=55?'status-warn':'status-ok')));
+ setText('lamp',s.lamp?'ON':'OFF');
+ setText('acir',(s.acCooling?'COOLING':'STANDBY'));
+ setText('netpill',s.wifiStaConnected?('NET '+s.ip):'NET OFFLINE');
+ setText('timepill',s.time||'--:--');
+ setText('relaypill',s.doubaoRelayConnected?'AI READY':'AI OFFLINE');
+ setText('xiaozhi',s.xiaozhiPhase+(s.speakerPlaying?' / AUDIO':''));
+ setClass('xiaozhi','value '+(s.xiaozhiPhase==='IDLE'||s.xiaozhiPhase==='DONE'?'ok':'warnText'));
+ setText('xzprompt',s.xiaozhiPrompt||'--');
+ setText('xzreply',s.xiaozhiReply||'--');
+ setText('aiadvice',s.aiAdvice||'--');
+ $('events').innerHTML=(s.events.length?s.events:['No events']).map(e=>'<li>'+esc(e)+'</li>').join('');
  return s;
 }
 setInterval(refresh,2000);refresh();
@@ -146,8 +245,10 @@ String jsonString(const char *value) {
 }
 
 String stateJson() {
+  char aiAdvice[192];
+  buildAiAdvice(aiAdvice, sizeof(aiAdvice));
   String json;
-  json.reserve(1120);
+  json.reserve(1400);
   json += "{";
   json += "\"tempC\":" + String(state.tempC, 1) + ",";
   json += "\"humidity\":" + String(state.humidity, 0) + ",";
@@ -161,6 +262,7 @@ String stateJson() {
   json += "\"micPercent\":" + String(noisePercentFor(state.micLevel, state.micThreshold)) + ",";
   json += "\"aiRiskScore\":" + String(state.aiRiskScore) + ",";
   json += "\"aiRisk\":\"" + String(state.aiRiskText) + "\",";
+  json += "\"aiAdvice\":" + jsonString(aiAdvice) + ",";
   json += "\"xiaozhiPhase\":\"" + String(state.xiaozhiStatusText) + "\",";
   json += "\"xiaozhiPrompt\":" + jsonString(state.xiaozhiPromptText) + ",";
   json += "\"xiaozhiReply\":" + jsonString(state.xiaozhiReplyText) + ",";
@@ -168,11 +270,12 @@ String stateJson() {
   json += "\"doubaoRelayConfigured\":" + boolJson(state.doubaoRelayConfigured) + ",";
   json += "\"doubaoRelayConnected\":" + boolJson(state.doubaoRelayConnected) + ",";
   json += "\"doubaoSessionActive\":" + boolJson(state.doubaoSessionActive) + ",";
+  json += "\"xiaozhiManualMode\":" + boolJson(state.xiaozhiManualMode) + ",";
   json += "\"xiaozhiError\":" + jsonString(state.xiaozhiErrorText) + ",";
   json += "\"speakerOk\":" + boolJson(state.i2sSpeakerOk) + ",";
   json += "\"speakerPlaying\":" + boolJson(state.speakerPlaying) + ",";
   json += "\"acCooling\":" + boolJson(state.acCooling) + ",";
-  json += "\"lamp\":" + boolJson(state.lampOverride ? state.manualLamp : state.presence) + ",";
+  json += "\"lamp\":" + boolJson(state.alarm || (state.lampOverride ? state.manualLamp : state.presence)) + ",";
   json += "\"bleClientConnected\":" + boolJson(state.bleClientConnected) + ",";
   json += "\"wifiStaConnected\":" + boolJson(state.wifiStaConnected) + ",";
   json += "\"ip\":\"" + String(state.ipText) + "\",";
@@ -214,7 +317,8 @@ bool runDashboardCommand(const String &command, const String &prompt) {
     applyHubCommand(HubCommand::RunMacroNight, "WEB");
   } else if (command == "xiaozhi" || command == "ai" || command == "voice") {
     if (prompt.length() > 0) {
-      triggerXiaozhiAiWithPrompt("WEB speech", prompt.c_str());
+      char reply[160];
+      applyAiTextCommand(prompt, "WEB AI", reply, sizeof(reply));
     } else {
       applyHubCommand(HubCommand::TriggerXiaozhi, "WEB");
     }
@@ -229,7 +333,7 @@ void handleIndex() {
 }
 
 void handleApiState() {
-  dashboard.send(200, "application/json", stateJson());
+  dashboard.send(200, "application/json; charset=utf-8", stateJson());
 }
 
 void handleCommand() {

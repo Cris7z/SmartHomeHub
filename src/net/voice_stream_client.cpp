@@ -4,6 +4,7 @@
 #include <WebSocketsClient.h>
 #include <cstring>
 
+#include "../app/controls.h"
 #include "../app/hub_state.h"
 #include "../app/xiaozhi_core.h"
 #include "../board/config.h"
@@ -68,8 +69,74 @@ String startTurnJson() {
   body += String(state.tempC, 1);
   body += ",\"humidity\":";
   body += String(state.humidity, 0);
+  body += ",\"presence\":";
+  body += state.presence ? "true" : "false";
+  body += ",\"security_armed\":";
+  body += state.securityArmed ? "true" : "false";
+  body += ",\"force_security\":";
+  body += state.forceSecurity ? "true" : "false";
+  body += ",\"alarm\":";
+  body += state.alarm ? "true" : "false";
+  body += ",\"sound\":";
+  body += state.soundTriggered ? "true" : "false";
+  body += ",\"risk_score\":";
+  body += String(state.aiRiskScore);
+  body += ",\"risk\":\"";
+  body += state.aiRiskText;
+  body += "\",\"lamp_on\":";
+  body += (state.alarm || (state.lampOverride ? state.manualLamp : state.presence)) ? "true" : "false";
+  body += ",\"lamp_override\":";
+  body += state.lampOverride ? "true" : "false";
+  body += ",\"ac_cooling\":";
+  body += state.acCooling ? "true" : "false";
+  body += ",\"ir_rx\":";
+  body += state.irReceived ? "true" : "false";
+  body += ",\"ir_test\":";
+  body += state.irTestActive ? "true" : "false";
+  body += ",\"time\":\"";
+  body += state.timeReady ? state.timeText : "--:--";
+  body += "\",\"weather\":\"";
+  body += state.weatherReady ? state.weatherText : "--";
+  body += "\",\"location\":\"";
+  body += state.locationText;
+  body += "\"";
   body += "}}";
   return body;
+}
+
+void applyRelayAction(const char *name, const char *text) {
+  if (!name || !name[0]) {
+    return;
+  }
+
+  if (std::strcmp(name, "security_on") == 0) {
+    applyHubCommand(HubCommand::SetSecurityOn, "XIAOZHI");
+  } else if (std::strcmp(name, "security_off") == 0) {
+    applyHubCommand(HubCommand::SetSecurityOff, "XIAOZHI");
+  } else if (std::strcmp(name, "lamp_on") == 0) {
+    applyHubCommand(HubCommand::SetLampOn, "XIAOZHI");
+  } else if (std::strcmp(name, "lamp_off") == 0) {
+    applyHubCommand(HubCommand::SetLampOff, "XIAOZHI");
+  } else if (std::strcmp(name, "ac_on") == 0) {
+    applyHubCommand(HubCommand::SetAcOn, "XIAOZHI");
+  } else if (std::strcmp(name, "ac_off") == 0) {
+    applyHubCommand(HubCommand::SetAcOff, "XIAOZHI");
+  } else if (std::strcmp(name, "clear_alarm") == 0) {
+    applyHubCommand(HubCommand::ClearAlarmSecurity, "XIAOZHI");
+  } else if (std::strcmp(name, "macro_home") == 0) {
+    applyHubCommand(HubCommand::RunMacroHome, "XIAOZHI");
+  } else if (std::strcmp(name, "macro_away") == 0) {
+    applyHubCommand(HubCommand::RunMacroAway, "XIAOZHI");
+  } else if (std::strcmp(name, "macro_night") == 0) {
+    applyHubCommand(HubCommand::RunMacroNight, "XIAOZHI");
+  } else {
+    return;
+  }
+
+  if (text && text[0]) {
+    copyBounded(state.xiaozhiReplyText, sizeof(state.xiaozhiReplyText), text);
+  }
+  Serial.printf("[XIAOZHI] action=%s\n", name);
 }
 
 void sendHello() {
@@ -112,6 +179,9 @@ void handleRelayText(const char *text) {
       break;
     case VoiceRelayMessageType::Reply:
       copyBounded(state.xiaozhiReplyText, sizeof(state.xiaozhiReplyText), message.text);
+      break;
+    case VoiceRelayMessageType::Action:
+      applyRelayAction(message.name, message.text);
       break;
     case VoiceRelayMessageType::Done:
       turnActive = false;
