@@ -1,7 +1,14 @@
 $ErrorActionPreference = 'Stop'
 
 $EnvFile = Join-Path $PSScriptRoot '.env'
-$Python = 'D:\A-Soft\DevTools\SmartHomeHubVoiceRelay\.venv\Scripts\python.exe'
+$InstallRoot = if ($env:SMARTHOMEHUB_RELAY_HOME) {
+    $env:SMARTHOMEHUB_RELAY_HOME
+} elseif (Test-Path -LiteralPath 'D:\A-Soft\DevTools\SmartHomeHubVoiceRelay') {
+    'D:\A-Soft\DevTools\SmartHomeHubVoiceRelay'
+} else {
+    Join-Path $env:LOCALAPPDATA 'SmartHomeHubVoiceRelay'
+}
+$Python = Join-Path $InstallRoot '.venv\Scripts\python.exe'
 
 if (-not (Test-Path -LiteralPath $EnvFile)) {
     throw 'Missing tools\doubao_relay\.env. Create it from .env.example first.'
@@ -27,7 +34,7 @@ Get-NetIPAddress -AddressFamily IPv4 |
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 Push-Location $RepoRoot
 try {
-    & $Python -m tools.doubao_relay.server
+    & $Python -m tools.doubao_relay.server @args
 } finally {
     Pop-Location
 }

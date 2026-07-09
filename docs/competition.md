@@ -2,7 +2,7 @@
 
 项目名称：乐鑫·智居 SmartHomeHub
 
-版本：V1.0
+版本：持续开发中，稳定演示节点见 Git tags
 
 主控：ESP32-S3
 
@@ -43,11 +43,11 @@ pio device monitor -b 115200
 
 | 项目 | 配置 |
 |---|---|
-| PlatformIO 环境 | `esp32-s3-devkitc-1` |
+| PlatformIO 环境 | `esp32-s3-devkitc-1-n16r8` |
 | 框架 | Arduino |
 | 串口监视器 | `115200` |
 | 上传速度 | `921600` |
-| USB CDC | 已开启 |
+| 串口日志 | CH340 / UART0；USB CDC 默认关闭 |
 
 依赖库由 PlatformIO 自动安装：
 
@@ -196,8 +196,8 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 micPct=19% ir=0 alarm=0 ac
 7. 等无人超过 10 秒，`SEC` 变为 `ARMED`。
 8. 接 I2S 麦克风，切到 SYSTEM 页观察 `NOISE` 百分比；安防状态下制造较大声音，接近或超过 `100%` 后触发 `ALARM: NOISE!`，灯带红色闪烁；停止制造噪声后约 5 秒自动恢复。
 9. 接 MAX98357A I2S 功放和扬声器，确认 DIN/BCLK/LRC 分别为 GPIO47/GPIO42/GPIO38；串口显示 `I2S speaker: OK`，触发小智时应有短提示音。没有扬声器时可以先看 XIAOZHI 页和串口日志。
-9.1 配置豆包实时语音：先删除截图里暴露过的 API Key，重新创建 replacement key，只放进 `tools/doubao_relay/.env`；执行 `tools\doubao_relay\setup.ps1`；再执行 `D:\A-Soft\DevTools\SmartHomeHubVoiceRelay\.venv\Scripts\python.exe -m tools.doubao_relay.server --probe`，必须出现 `AUTH OK`；把 `run.ps1` 打印的 `ws://电脑局域网IP:8765/voice` 写入忽略文件 `src/net/secrets.h` 的 `SMART_HOME_DOUBAO_RELAY_URL`；启动 `tools\doubao_relay\run.ps1` 后再上传固件。
-9.2 实时语音验收接线保持：`INMP441: BCLK GPIO15, WS GPIO39, SD GPIO40`，`MAX98357A: DIN GPIO47, BCLK GPIO42, LRC GPIO38`。对麦克风说一句中文，要求串口依次出现 `[VOICE] relay connected`、`[DOUBAO] session started`、`[DOUBAO] asr=`、`[DOUBAO] reply=`、`[VOICE] playback complete`，并且声音从 MAX98357A 扬声器输出，浏览器和电脑扬声器不发声。
+9.1 配置豆包实时语音：复制 `tools/doubao_relay/.env.example` 为 `tools/doubao_relay/.env`，只在本地填写 API 凭据；执行 `tools\doubao_relay\setup.ps1`；再执行 `tools\doubao_relay\run.ps1 --probe`，必须出现 `AUTH OK`；启动 `tools\doubao_relay\run.ps1`，把脚本打印的 `ws://<relay-host-ip>:8765/voice` 写入忽略文件 `src/net/secrets.h` 的 `SMART_HOME_DOUBAO_RELAY_URL`；最后重新上传固件。
+9.2 实时语音验收接线保持：`INMP441: BCLK GPIO15, WS GPIO39, SD GPIO40`，`MAX98357A: DIN GPIO47, BCLK GPIO42, LRC GPIO38`。对麦克风说一句中文，要求串口依次出现 `[VOICE] relay connected`、`[DOUBAO] session started`、`[DOUBAO] asr=`、`[DOUBAO] reply=`、`[VOICE] playback complete`，并且声音从 MAX98357A 扬声器输出，浏览器和开发主机扬声器不发声。
 10. 接蜂鸣器，确认报警时蜂鸣器能响。
 11. 接红外发射，调低温度阈值或捂热 AHT20，确认串口出现空调控制日志。
 12. 接红外接收，遥控器按键后确认 `IR: RX`。
@@ -221,4 +221,4 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 micPct=19% ir=0 alarm=0 ac
 1. 红外发射目前不是具体空调协议，后续需要接入真实空调码库或学习码。
 2. I2S 麦克风输出的是相对声音强度，不是标准 dB；阈值 `MIC_RMS_TRIGGER`、自适应余量和平滑权重需要在比赛现场按噪声环境调参。
 3. 屏幕已改为局部刷新；如现场仍有闪烁，优先检查供电、SPI 接线和屏幕背光稳定性。
-4. 小智 AI 已接入局域网 PC 桥和豆包实时语音；正式演示前必须完成 API Key 轮换、`--probe` 鉴权、桥接脚本常驻和一次实物语音验收。
+4. 小智 AI 已接入局域网 relay 和豆包实时语音；正式演示前必须完成 `--probe` 鉴权、relay 常驻和一次实物语音验收。

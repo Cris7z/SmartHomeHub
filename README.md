@@ -1,10 +1,9 @@
 # SmartHomeHub
 
-当前版本：V1.1
-
 SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目使用 PlatformIO + Arduino 框架开发，集成温湿度采集、人体存在检测、灯光联动、无人安防、声音报警、红外收发、时间天气、远程预警、Web 控制台、BLE 控制、小智 AI 演示链路和 TFT 屏幕状态展示。
 
 > 项目当前定位为硬件原型与比赛演示 Demo，可作为 ESP32-S3 智能家居、传感器联动和本地状态面板项目的参考起点。
+> 当前 `main` 分支保存最新集成版本；可复现的阶段演示版本请参考 Git tags。
 
 ## 功能特性
 
@@ -22,7 +21,8 @@ SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目
 - BLE 状态广播和命令控制
 - Web / BLE 快捷键宏场景：Home、Away、Night
 - AI Guard 风险评分和最近事件日志
-- 小智 AI 演示框架：麦克风自动触发、状态机、本地回复、I2S 扬声器提示音和独立屏幕页
+- AI 助手建议、Web 文本指令和语音 relay 动作控制
+- 小智 AI 演示框架：麦克风自动触发、状态机、豆包实时语音、I2S 扬声器输出和独立屏幕页
 - 5 个实体按键控制安防、灯光、空调、屏幕翻页和报警清除
 - 串口输出完整调试状态
 
@@ -37,7 +37,7 @@ SmartHomeHub 是一个基于 ESP32-S3 的智能家居中控演示项目。项目
 连接 Wi-Fi -> IP 定位城市、同步时间、拉取当地天气和日出日落、启动 Web Dashboard
 安防报警 -> 本地蜂鸣器/灯带报警，并在配置 PushPlus 后发送远程预警
 快捷键宏 -> Home 回到居家自动模式，Away 开启离家安防，Night 开启夜间安防并显示天气时间页
-小智 AI -> 麦克风声音触发或 Web/BLE 命令触发 -> 豆包实时语音识别和回复 -> MAX98357A 扬声器播放 TTS -> XIAOZHI 页显示状态
+小智 AI -> 麦克风声音、Web/BLE 命令或文本指令触发 -> 豆包实时语音识别和回复 -> 执行安防/灯光/空调/场景控制 -> MAX98357A 扬声器播放 TTS -> XIAOZHI 页显示状态
 ```
 
 ## 项目结构
@@ -53,6 +53,7 @@ SmartHomeHub/
 ├─ docs/
 │  ├─ competition.md        # 比赛展示、接线和验收说明
 │  └─ branching.md          # 分支模型和版本管理说明
+├─ tools/doubao_relay/      # 局域网语音 relay 和豆包实时语音桥接
 ├─ CONTRIBUTING.md          # 协作、提交和版本管理规范
 ├─ platformio.ini           # PlatformIO 构建配置
 ├─ README.md                # 项目说明
@@ -76,6 +77,7 @@ SmartHomeHub/
 | `src/app/controls.*` | 按键、Web、BLE 共用的控制命令入口 |
 | `src/app/shortcut_macro.*` | Home / Away / Night 快捷键宏场景预设 |
 | `src/app/ai_guard.*` | 基于状态和声音强度计算 AI Guard 风险分数 |
+| `src/app/ai_assistant.*` | AI 建议文本和安防、灯光、空调等自然语言指令解析 |
 | `src/app/xiaozhi_core.*` | 小智 AI 状态名、触发策略和本地回复格式化 |
 | `src/app/xiaozhi_ai.*` | 小智 AI 演示状态机和扬声器提示音触发 |
 | `src/app/event_log.*` | 最近事件日志 |
@@ -85,6 +87,8 @@ SmartHomeHub/
 | `src/net/time_weather.*` | IP 城市定位、NTP 时间同步和 Open-Meteo 天气拉取 |
 | `src/net/web_dashboard.*` | HTTP Web Dashboard 和 JSON API |
 | `src/net/ble_service.*` | BLE 状态特征和命令特征 |
+| `src/net/voice_stream_*` | ESP32-S3 与语音 relay 之间的 WebSocket 音频和控制协议 |
+| `tools/doubao_relay/` | 运行在开发主机上的豆包实时语音 relay |
 
 ## 硬件清单
 
@@ -183,6 +187,7 @@ copy src\net\secrets_example.h src\net\secrets.h
 #define SMART_HOME_PUSHPLUS_TOKEN "your_pushplus_token"
 #define SMART_HOME_XIAOZHI_ENDPOINT ""
 #define SMART_HOME_XIAOZHI_TOKEN ""
+#define SMART_HOME_DOUBAO_RELAY_URL "ws://192.168.1.100:8765/voice"
 #define SMART_HOME_WEATHER_LAT "24.4798"
 #define SMART_HOME_WEATHER_LON "118.0894"
 ```
@@ -193,25 +198,23 @@ copy src\net\secrets_example.h src\net\secrets.h
 
 ## 豆包实时语音配置
 
-小智实时语音链路使用 ESP32-S3 采集 INMP441 音频，通过局域网 WebSocket 发给电脑上的 `tools/doubao_relay`，再由电脑桥接到豆包实时语音 API。电脑只做协议转发，不播放声音；最终 TTS 音频通过 MAX98357A 从开发板扬声器输出。
+小智实时语音链路使用 ESP32-S3 采集 INMP441 音频，通过局域网 WebSocket 发给运行 `tools/doubao_relay` 的开发主机，再由 relay 桥接到豆包实时语音 API。开发主机只做协议转发，不播放声音；最终 TTS 音频通过 MAX98357A 从开发板扬声器输出。
 
 配置顺序：
 
-1. 删除截图里暴露过的 API Key。
-2. 重新创建一个豆包语音 API Key，只写入 `tools/doubao_relay/.env`。
-3. 执行一次 `tools\doubao_relay\setup.ps1`。
-4. 执行 `D:\A-Soft\DevTools\SmartHomeHubVoiceRelay\.venv\Scripts\python.exe -m tools.doubao_relay.server --probe`，必须看到 `AUTH OK`。
-5. 把 `run.ps1` 打印出来的局域网地址写入被 git 忽略的 `src/net/secrets.h`：
+1. 在豆包/火山引擎控制台创建语音 API 凭据。不要把 API Key、App ID、Access Key、Wi-Fi 密码或局域网地址提交到仓库。
+2. 复制 `tools/doubao_relay/.env.example` 为 `tools/doubao_relay/.env`，并只在本地填写凭据。
+3. 执行一次 `tools\doubao_relay\setup.ps1` 安装 relay 依赖。脚本会优先使用 `SMARTHOMEHUB_RELAY_HOME` 指定的位置；未指定时会选择合适的本地目录。
+4. 执行 `tools\doubao_relay\run.ps1 --probe`，确认出现 `AUTH OK`。
+5. 执行 `tools\doubao_relay\run.ps1` 启动 relay，并把脚本打印的局域网地址写入被 Git 忽略的 `src/net/secrets.h`：
 
 ```cpp
-#define SMART_HOME_DOUBAO_RELAY_URL "ws://电脑局域网IP:8765/voice"
+#define SMART_HOME_DOUBAO_RELAY_URL "ws://<relay-host-ip>:8765/voice"
 ```
 
-6. 启动 `tools\doubao_relay\run.ps1`，再编译上传固件。
+6. 编译并上传固件，打开串口监视器验证语音链路。
 
-`.env` 的空模板在 `tools/doubao_relay/.env.example`，复制后只在本机填写。
-
-队友 clone 后还需要按 [CONTRIBUTING.md](CONTRIBUTING.md) 的“队友克隆规则”创建自己的 `src/net/secrets.h` 和 `tools/doubao_relay/.env`。这些本地密钥、Wi-Fi 和 relay IP 不提交到 Git。
+协作者克隆仓库后需要按 [CONTRIBUTING.md](CONTRIBUTING.md) 的“协作者本地配置”创建自己的 `src/net/secrets.h` 和 `tools/doubao_relay/.env`。这些本地密钥、Wi-Fi 和 relay IP 不提交到 Git。
 
 实物接线保持不变：
 
@@ -284,14 +287,14 @@ pio device monitor --port COM10 -b 115200
 
 | 项目 | 配置 |
 |---|---|
-| PlatformIO 环境 | `esp32-s3-devkitc-1` |
+| PlatformIO 环境 | `esp32-s3-devkitc-1-n16r8` |
 | 开发框架 | Arduino |
 | 串口监视器波特率 | `115200` |
-| 默认串口 | `COM8` |
+| 串口端口 | 自动检测，或通过命令行临时指定 |
 | 上传波特率 | `921600` |
-| USB CDC | 已开启 |
+| 串口日志 | CH340 / UART0；USB CDC 默认关闭 |
 
-如果你的开发板不是 `COM8`，可以先执行 `pio device list` 查看实际端口，再修改 `platformio.ini` 中的 `monitor_port` / `upload_port`，或使用命令行临时指定端口。
+建议先执行 `pio device list` 查看实际端口，再用命令行临时指定端口。不要为了个人开发环境的串口号修改公共 `platformio.ini`。
 
 依赖库：
 
@@ -357,7 +360,7 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 micPct=19% base=10000 thr=
 | `xz` | 小智 AI 当前状态：`IDLE`、`LISTEN`、`THINK`、`SPEAK` |
 | `spk` / `play` | I2S 扬声器驱动是否初始化、当前是否正在输出提示音 |
 | `ble` | 是否有 BLE 客户端连接 |
-| `sta` / `ip` | Wi-Fi STA 是否连接和本机 IP |
+| `sta` / `ip` | Wi-Fi STA 是否连接和设备 IP |
 | `push` | PushPlus token 是否已配置 |
 | `time` / `weather` / `out` | NTP 时间、天气文本和室外温度 |
 | `loc` / `rise` / `set` | IP 定位城市、当地日出和日落时间 |
@@ -383,6 +386,7 @@ T=26.5C H=55% presence=1 security=0 sound=0 mic=12345 micPct=19% base=10000 thr=
 | `away` / `macro_away` | 离家宏：开启强制安防，灯光手动关闭，切到 AI GUARD 页 |
 | `night` / `macro_night` | 夜间宏：开启强制安防，灯光手动关闭，切到 WEATHER 页 |
 | `xiaozhi` / `ai` / `voice` | 手动触发小智 AI 演示链路，跳到 XIAOZHI 页并播放提示音 |
+| `ai?prompt=我出门了` | 通过文本指令执行离家、回家、夜间、开关灯、开关空调、布防、撤防和状态咨询 |
 
 Web JSON 状态接口：
 
@@ -461,7 +465,7 @@ BLE 设备名为 `SmartHomeHub`。BLE 服务使用 Nordic UART 风格 UUID：
 - IP 定位使用城市级公网 IP 信息，精度到城市，不适合做室内或街道级定位；天气备用经纬度在 `secrets_example.h` 中，可按实际城市修改。
 - 天气数据来自 Open-Meteo HTTP 接口，日出日落使用接口返回的当地时区时间。
 - LD2410C 当前使用 OUT 引脚判断有人/无人，不读取 UART 距离、移动目标或静止目标数据。
-- 小智 AI 目前是可运行的本地演示链路：麦克风阈值或 Web/BLE 命令触发，生成家居状态回复，并通过 MAX98357A 输出提示音；还不是真实唤醒词、ASR、云端大模型语义对话或 TTS 流式播放。
+- 小智 AI 已支持局域网 relay、豆包实时语音识别/回复、Web 文本指令和 MAX98357A TTS 播放；仍不是离线唤醒词、本地大模型或完整家居协议控制系统。
 
 ## 贡献
 
@@ -477,4 +481,4 @@ pio run
 
 ## 许可证
 
-当前仓库尚未指定开源许可证。正式公开发布前建议补充 `LICENSE` 文件。
+本仓库暂未附加开源许可证。在添加 `LICENSE` 文件前，默认保留所有权利；如需复用代码或文档，请先联系维护者确认授权方式。

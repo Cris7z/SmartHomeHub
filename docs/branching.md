@@ -1,102 +1,88 @@
 # 分支模型
 
-本项目采用适合嵌入式/硬件联调的小型 Git Flow。目标是让 `main` 始终保持可演示，日常开发在 `develop` 或短分支中完成，硬件联调和比赛冻结版本有明确位置。
+本项目采用适合硬件原型和比赛演示的小型协作流程。目标是让 `main` 始终保持可编译、可演示，同时给高频硬件联调、Web/AI 功能和文档修改留出独立分支。
 
 ## 长期分支
 
-| 分支 | 用途 | 合并方向 |
-|---|---|---|
-| `main` | 稳定演示分支，只放已经验证过的版本 | 只从 `release/*` 或紧急 `hotfix/*` 合并 |
-| `develop` | 日常集成分支，功能和 bugfix 先合入这里 | 从 `feature/*`、`bugfix/*`、`bringup/*` 合并 |
-| `bringup/hardware-validation` | 硬件接线、传感器阈值、现场联调分支 | 验证稳定后合入 `develop` |
-| `release/demo-v0.1` | 当前演示基线冻结分支，用于随时回到稳定 Demo | 只接受演示前必要修复 |
+| 分支 | 用途 |
+|---|---|
+| `main` | 最新集成版本。合入前至少完成编译，重要演示节点用 tag 固定。 |
+
+当前阶段不强制维护长期 `develop`、`release/*` 或个人长期分支。等硬件和演示流程稳定后，再按需要引入更重的发布流程。
 
 ## 短期分支命名
+
+硬件联调：
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c bringup/i2s-mic-threshold
+```
 
 功能开发：
 
 ```bash
-git switch develop
-git pull
-git switch -c feature/tft-ui-refresh
+git switch main
+git pull --ff-only origin main
+git switch -c feature/web-ai-command
 ```
 
 Bug 修复：
-
-```bash
-git switch develop
-git pull
-git switch -c bugfix/alarm-reset
-```
-
-硬件联调：
-
-```bash
-git switch bringup/hardware-validation
-git pull
-git switch -c bringup/i2s-mic-threshold
-```
-
-紧急修复稳定演示版：
 
 ```bash
 git switch main
-git pull
-git switch -c hotfix/demo-upload-failure
+git pull --ff-only origin main
+git switch -c bugfix/alarm-reset
 ```
 
-## 推荐合并路径
+文档修改：
 
-常规功能：
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c docs/public-readme
+```
+
+## 合并规则
+
+推荐路径：
 
 ```text
-feature/* -> develop -> release/* -> main
+bringup/* -> main
+feature/* -> main
+bugfix/* -> main
+docs/* -> main
 ```
 
-Bug 修复：
+合并前至少确认：
 
-```text
-bugfix/* -> develop
-```
-
-硬件联调：
-
-```text
-bringup/* -> develop
-```
-
-演示前冻结：
-
-```text
-develop -> release/demo-vX.Y -> main
-```
-
-线上/比赛紧急修复：
-
-```text
-hotfix/* -> main -> develop
-```
+- `pio run` 通过。
+- 涉及 relay 的改动通过 `python -m unittest discover -s tools\doubao_relay -t . -p "test_*.py"`。
+- 涉及实物行为的改动说明已测试的硬件、串口现象和剩余风险。
+- 没有提交 `.pio/`、`.vscode` 个人配置、`.env`、`src/net/secrets.h`、日志或本地绝对路径。
 
 ## 版本标签
 
-重要节点用 tag 固定：
+重要演示节点用 tag 固定，方便后续继续开发后仍能回到稳定版本。
 
 ```bash
-git tag v0.1-demo-baseline
-git push origin v0.1-demo-baseline
+git tag v1.0-demo
+git push origin v1.0-demo
 ```
 
-推荐标签：
+推荐标签命名：
 
-- `v0.1-demo-baseline`：当前可编译、可演示基线。
-- `v0.2-hardware-ok`：主要硬件模块验证通过。
-- `v1.0-competition-demo`：比赛最终演示版本。
+- `v0.1-screen-ok`
+- `v0.2-sensor-ok`
+- `v0.3-alarm-ok`
+- `v1.0-demo`
+- `v1.1-competition-demo`
 
 ## 协作规则
 
-- `main` 不做随手开发，保持稳定。
-- `develop` 是默认集成分支，日常功能从这里切出去。
-- `feature/*`、`bugfix/*`、`bringup/*` 分支尽量短生命周期，用完合并或删除。
-- 修改公共引脚、硬件接线或 `platformio.ini` 前，应先说明影响范围。
-- 合并到 `develop` 或 `main` 前至少运行一次 `pio run`。
-- 不使用 `git push --force` 改写共享分支历史。
+- `main` 保持可编译，不提交明显无法构建的中间状态。
+- 短分支按任务或模块命名，避免长期个人分支。
+- 修改公共引脚、硬件接线、`platformio.ini`、语音 relay 协议或密钥配置方式前，应说明影响范围。
+- 不在共享分支上使用 `git push --force`。
+- 不把 token、Wi-Fi 密码、API Key、本地串口号或本地绝对路径写进公共提交。

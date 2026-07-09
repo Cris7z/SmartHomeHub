@@ -21,7 +21,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SmartHomeHub V1.1</title>
+<title>SmartHomeHub</title>
 <style>
 :root{
   color:#182126;
@@ -98,7 +98,7 @@ li{background:var(--panel2);border:1px solid var(--line);border-radius:6px;paddi
 <main>
 <header class="topbar">
   <div>
-    <h1>SmartHomeHub V1.1</h1>
+    <h1>SmartHomeHub</h1>
     <div class="subtitle">AIoT 家庭安全管家</div>
   </div>
   <div class="topmeta">

@@ -1,8 +1,19 @@
 $ErrorActionPreference = 'Stop'
 
-$InstallRoot = 'D:\A-Soft\DevTools\SmartHomeHubVoiceRelay'
+$DefaultInstallRoot = if ($env:SMARTHOMEHUB_RELAY_HOME) {
+    $env:SMARTHOMEHUB_RELAY_HOME
+} elseif (Test-Path -LiteralPath 'D:\A-Soft\DevTools') {
+    'D:\A-Soft\DevTools\SmartHomeHubVoiceRelay'
+} else {
+    Join-Path $env:LOCALAPPDATA 'SmartHomeHubVoiceRelay'
+}
+$InstallRoot = $DefaultInstallRoot
 $Venv = Join-Path $InstallRoot '.venv'
-$PreferredPython = 'D:\A-Soft\DevTools\Python313\python.exe'
+$PreferredPython = if ($env:SMARTHOMEHUB_PYTHON) {
+    $env:SMARTHOMEHUB_PYTHON
+} else {
+    'D:\A-Soft\DevTools\Python313\python.exe'
+}
 $PythonCommand = if (Test-Path -LiteralPath $PreferredPython) {
     $PreferredPython
 } else {
@@ -10,7 +21,8 @@ $PythonCommand = if (Test-Path -LiteralPath $PreferredPython) {
 }
 $PythonLabel = if ($PythonCommand -is [string]) { $PythonCommand } else { $PythonCommand.Definition }
 
-Write-Host 'Estimated program/cache use: under 100 MB on D:'
+Write-Host 'Estimated program/cache use: under 100 MB.'
+Write-Host "Relay install root: $InstallRoot"
 Write-Host "Using Python: $PythonLabel"
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 & $PythonCommand -m venv $Venv

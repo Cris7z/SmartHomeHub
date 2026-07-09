@@ -107,7 +107,7 @@ class RealtimeSession:
     def start_payload(self, home: dict) -> bytes:
         summary = _home_summary(home)
         role = (
-            "你是 SmartHomeHub V1.1 的小智语音助手。"
+            "你是 SmartHomeHub 的小智语音助手。"
             "你理解这块 ESP32-S3 智能家居中控板的固定规则："
             "HOME 页面显示温度、湿度、ROOM、SEC、AC、LAMP；"
             "SYSTEM 页面显示声音、蓝牙、IR 和 IR TEST；"
